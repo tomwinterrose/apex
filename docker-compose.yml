@@ -1,8 +1,8 @@
 services:
-  motorsports-matcher:
+  vroomarr:
     build: .
     ports:
-      - "8080:8080"
+      - "9198:9198"
     environment:
       # Required for WEC/IMSA via TheSportsDB.
       # Free public key is "1" or "2" — 30 req/min, season data only.
@@ -17,7 +17,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9198/health')"]
       interval: 30s
       timeout: 5s
       retries: 3

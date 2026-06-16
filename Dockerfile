@@ -8,9 +8,9 @@ RUN pip install --no-cache-dir -e .
 COPY motorsports/ motorsports/
 COPY app.py .
 
-EXPOSE 8080
+EXPOSE 9198
 
-ENV PORT=8080
+ENV PORT=9198
 ENV LOG_LEVEL=INFO
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9198"]

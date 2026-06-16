@@ -1,10 +1,10 @@
-"""Motorsports Matcher — FastAPI entry point.
+"""Vroomarr — FastAPI entry point.
 
 Environment variables:
     TSDB_API_KEY    TheSportsDB API key (default: "1" — free public key)
     TSDB_PREMIUM    Set to "1" if you have a premium TSDB key
     DEFAULT_RACE_HOURS  Fallback race duration in hours (default: 3.0)
-    PORT            Server port (default: 8080)
+    PORT            Server port (default: 9198)
     LOG_LEVEL       Logging level (default: INFO)
 """
 
@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Motorsports Matcher",
+    title="Vroomarr",
     description=(
         "Match IPTV/EPG stream names to motorsports events and compute per-session time windows. "
         "Supports F1, NASCAR, IndyCar, MotoGP (ESPN) and WEC/IMSA (TSDB + static calendar)."
