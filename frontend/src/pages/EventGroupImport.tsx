@@ -1,0 +1,662 @@
+import { useState, useMemo } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "react-router-dom"
+import { api } from "@/api/client"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
+import { Loader2, Tv, Eye, Plus, AlertCircle, Info, Check } from "lucide-react"
+import { StreamTimezoneSelector } from "@/components/StreamTimezoneSelector"
+
+// Types
+interface M3UAccount {
+  id: number
+  name: string
+  url?: string
+}
+
+interface M3UGroup {
+  id: number
+  name: string
+  stream_count?: number
+}
+
+interface Stream {
+  id: number
+  name: string
+}
+
+interface EnabledGroup {
+  id: number
+  m3u_group_id: number | null
+  m3u_account_id: number | null
+}
+
+interface SelectedGroup {
+  m3u_account_id: number
+  m3u_account_name: string
+  m3u_group_id: number
+  m3u_group_name: string
+  stream_count?: number
+}
+
+interface BulkCreateResponse {
+  total_created: number
+  total_failed: number
+  created: Array<{ group_id: number; name: string; success: boolean }>
+}
+
+// Fetch functions
+async function fetchM3UAccounts(): Promise<M3UAccount[]> {
+  return api.get("/dispatcharr/m3u-accounts")
+}
+
+async function fetchM3UGroups(accountId: number): Promise<M3UGroup[]> {
+  return api.get(`/dispatcharr/m3u-accounts/${accountId}/groups`)
+}
+
+async function fetchGroupStreams(
+  accountId: number,
+  groupId: number
+): Promise<Stream[]> {
+  return api.get(`/dispatcharr/m3u-accounts/${accountId}/groups/${groupId}/streams`)
+}
+
+async function fetchEnabledGroups(): Promise<EnabledGroup[]> {
+  const response = await api.get<{ groups: EnabledGroup[] }>("/groups?include_disabled=true")
+  return response.groups
+}
+
+export function EventGroupImport() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [selectedAccount, setSelectedAccount] = useState<M3UAccount | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [previewGroup, setPreviewGroup] = useState<M3UGroup | null>(null)
+
+  // Bulk selection state - persists across accounts and search
+  const [selectedGroups, setSelectedGroups] = useState<Map<string, SelectedGroup>>(new Map())
+
+  // Bulk import modal state
+  const [showBulkModal, setShowBulkModal] = useState(false)
+  const [bulkStreamTimezone, setBulkStreamTimezone] = useState<string | null>(null)
+  const [bulkEnabled, setBulkEnabled] = useState(true)
+  const [bulkTeamStreams, setBulkTeamStreams] = useState(false)
+  const [bulkEPGMatch, setBulkEPGMatch] = useState(false)
+  const [bulkImporting, setBulkImporting] = useState(false)
+
+  // Queries
+  const accountsQuery = useQuery({
+    queryKey: ["dispatcharr-m3u-accounts"],
+    queryFn: fetchM3UAccounts,
+  })
+
+  const groupsQuery = useQuery({
+    queryKey: ["dispatcharr-m3u-groups", selectedAccount?.id],
+    queryFn: () => fetchM3UGroups(selectedAccount!.id),
+    enabled: !!selectedAccount,
+  })
+
+  const enabledQuery = useQuery({
+    queryKey: ["event-groups-enabled"],
+    queryFn: fetchEnabledGroups,
+  })
+
+  const streamsQuery = useQuery({
+    queryKey: ["dispatcharr-group-streams", selectedAccount?.id, previewGroup?.id],
+    queryFn: () => fetchGroupStreams(selectedAccount!.id, previewGroup!.id),
+    enabled: !!selectedAccount && !!previewGroup,
+  })
+
+  // Get set of already-enabled (account_id, group_id) pairs
+  const enabledGroupKeys = new Set(
+    (enabledQuery.data ?? [])
+      .filter((g) => g.m3u_group_id !== null && g.m3u_account_id !== null)
+      .map((g) => `${g.m3u_account_id}:${g.m3u_group_id}`)
+  )
+
+  // Filter groups by search (preserving original order from Dispatcharr)
+  const filteredGroups = (groupsQuery.data ?? []).filter((g) =>
+    g.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  // Get selectable groups (not already enabled)
+  const selectableGroups = filteredGroups.filter(
+    (g) => !enabledGroupKeys.has(`${selectedAccount?.id}:${g.id}`)
+  )
+
+  // Check if all visible selectable groups are selected
+  const allVisibleSelected = selectedAccount && selectableGroups.length > 0 &&
+    selectableGroups.every((g) => selectedGroups.has(`${selectedAccount.id}:${g.id}`))
+
+  // Selection helpers
+  const toggleGroupSelection = (group: M3UGroup) => {
+    if (!selectedAccount) return
+    const key = `${selectedAccount.id}:${group.id}`
+    const newSelected = new Map(selectedGroups)
+    if (newSelected.has(key)) {
+      newSelected.delete(key)
+    } else {
+      newSelected.set(key, {
+        m3u_account_id: selectedAccount.id,
+        m3u_account_name: selectedAccount.name,
+        m3u_group_id: group.id,
+        m3u_group_name: group.name,
+        stream_count: group.stream_count,
+      })
+    }
+    setSelectedGroups(newSelected)
+  }
+
+  const selectAllVisible = () => {
+    if (!selectedAccount) return
+    const newSelected = new Map(selectedGroups)
+    for (const group of selectableGroups) {
+      const key = `${selectedAccount.id}:${group.id}`
+      if (!newSelected.has(key)) {
+        newSelected.set(key, {
+          m3u_account_id: selectedAccount.id,
+          m3u_account_name: selectedAccount.name,
+          m3u_group_id: group.id,
+          m3u_group_name: group.name,
+          stream_count: group.stream_count,
+        })
+      }
+    }
+    setSelectedGroups(newSelected)
+  }
+
+  const deselectAllVisible = () => {
+    if (!selectedAccount) return
+    const newSelected = new Map(selectedGroups)
+    for (const group of selectableGroups) {
+      newSelected.delete(`${selectedAccount.id}:${group.id}`)
+    }
+    setSelectedGroups(newSelected)
+  }
+
+  const clearAllSelections = () => {
+    setSelectedGroups(new Map())
+  }
+
+  // Get selection summary by account
+  const selectionByAccount = useMemo(() => {
+    const byAccount: Record<string, number> = {}
+    for (const [, group] of selectedGroups) {
+      byAccount[group.m3u_account_name] = (byAccount[group.m3u_account_name] || 0) + 1
+    }
+    return byAccount
+  }, [selectedGroups])
+
+  // Handle single import (existing behavior)
+  const handleImport = (group: M3UGroup) => {
+    const params = new URLSearchParams({
+      m3u_group_id: String(group.id),
+      m3u_group_name: group.name,
+      m3u_account_id: String(selectedAccount!.id),
+      m3u_account_name: selectedAccount!.name,
+    })
+    navigate(`/sources/new?${params.toString()}`)
+  }
+
+  // Handle bulk import
+  const handleBulkImport = async () => {
+    setBulkImporting(true)
+    try {
+      const response = await api.post<BulkCreateResponse>("/groups/bulk", {
+        groups: Array.from(selectedGroups.values()).map((g) => ({
+          m3u_group_id: g.m3u_group_id,
+          m3u_group_name: g.m3u_group_name,
+          m3u_account_id: g.m3u_account_id,
+          m3u_account_name: g.m3u_account_name,
+        })),
+        settings: {
+          stream_timezone: bulkStreamTimezone,
+          enabled: bulkEnabled,
+          team_streams_enabled: bulkTeamStreams,
+          epg_match_enabled: bulkEPGMatch,
+        },
+      })
+
+      // Refresh queries
+      await queryClient.invalidateQueries({ queryKey: ["event-groups-enabled"] })
+      await queryClient.invalidateQueries({ queryKey: ["event-groups"] })
+
+      // Clear selections and close modal
+      setSelectedGroups(new Map())
+      setShowBulkModal(false)
+
+      // Show success or navigate
+      if (response.total_created > 0) {
+        navigate("/sources")
+      }
+    } catch (error) {
+      console.error("Bulk import failed:", error)
+    } finally {
+      setBulkImporting(false)
+    }
+  }
+
+  // Reset bulk modal state
+  const openBulkModal = () => {
+    setBulkStreamTimezone(null)
+    setBulkEnabled(true)
+    setShowBulkModal(true)
+  }
+
+  const isDispatcharrConfigured = accountsQuery.data && accountsQuery.data.length > 0
+
+  return (
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+      {/* Left Sidebar - M3U Accounts */}
+      <div className="w-60 border-r bg-muted/30 overflow-y-auto flex-shrink-0">
+        <div className="p-3 border-b">
+          <h2 className="text-xs font-semibold uppercase text-muted-foreground">
+            M3U Accounts
+          </h2>
+        </div>
+
+        {accountsQuery.isLoading ? (
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : accountsQuery.error ? (
+          <div className="p-4 text-center">
+            <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-2" />
+            <p className="text-sm text-destructive">Connection failed</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Check Dispatcharr settings
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => navigate("/settings")}
+            >
+              Settings
+            </Button>
+          </div>
+        ) : !isDispatcharrConfigured ? (
+          <div className="p-4 text-center">
+            <Tv className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No M3U accounts found</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Add accounts in Dispatcharr
+            </p>
+          </div>
+        ) : (
+          <div className="py-1">
+            {[...accountsQuery.data].sort((a, b) => a.name.localeCompare(b.name)).map((account) => {
+              const accountSelectionCount = Array.from(selectedGroups.values())
+                .filter((g) => g.m3u_account_id === account.id).length
+              return (
+                <button
+                  key={account.id}
+                  onClick={() => {
+                    setSelectedAccount(account)
+                    setSearchTerm("")
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 border-l-2 border-transparent",
+                    selectedAccount?.id === account.id &&
+                      "bg-muted border-l-primary"
+                  )}
+                >
+                  <Tv className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate flex-1 text-left">{account.name}</span>
+                  {accountSelectionCount > 0 && (
+                    <Badge variant="secondary" className="h-5 text-xs">
+                      {accountSelectionCount}
+                    </Badge>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {!selectedAccount ? (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <h3 className="text-lg font-medium mb-1">Select an M3U account</h3>
+              <p className="text-sm">
+                Choose an account from the sidebar to view and import groups
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="border-b p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-xl font-bold">{selectedAccount.name}</h1>
+                  <p className="text-sm text-muted-foreground">
+                    {groupsQuery.data?.length ?? 0} groups
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectableGroups.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={allVisibleSelected ? deselectAllVisible : selectAllVisible}
+                    >
+                      {allVisibleSelected ? "Deselect All" : "Select All"}
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => groupsQuery.refetch()}
+                    disabled={groupsQuery.isFetching}
+                  >
+                    {groupsQuery.isFetching ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Reload"
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <Input
+                placeholder="Search groups..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-md"
+              />
+            </div>
+
+            {/* Groups Grid */}
+            <div className="flex-1 overflow-y-auto p-4 pb-20">
+              {groupsQuery.isLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : groupsQuery.error ? (
+                <div className="text-center text-destructive p-8">
+                  Failed to load groups
+                </div>
+              ) : filteredGroups.length === 0 ? (
+                <div className="text-center text-muted-foreground p-8">
+                  {searchTerm ? "No groups match your search" : "No groups found"}
+                </div>
+              ) : (
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-2">
+                  {filteredGroups.map((group) => {
+                    const key = `${selectedAccount.id}:${group.id}`
+                    const isEnabled = enabledGroupKeys.has(key)
+                    const isSelected = selectedGroups.has(key)
+
+                    return (
+                      <div
+                        key={group.id}
+                        className={cn(
+                          "p-3 rounded-md border transition-colors relative",
+                          isEnabled
+                            ? "opacity-60 border-green-500/50 bg-green-500/5"
+                            : isSelected
+                            ? "border-primary bg-primary/5"
+                            : "hover:border-primary/50"
+                        )}
+                      >
+                        {/* Checkbox for non-enabled groups */}
+                        {!isEnabled && (
+                          <div className="absolute top-2 left-2">
+                            <Checkbox
+                              checked={isSelected}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleGroupSelection(group)
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex items-start justify-between gap-2 mb-2 ml-6">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm truncate flex items-center gap-1">
+                              {group.name}
+                              {isEnabled && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] bg-green-500/20 text-green-600 px-1 rounded">
+                                  <Check className="h-2.5 w-2.5" />
+                                  Imported
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              ID: {group.id}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between ml-6">
+                          <span className="text-xs text-muted-foreground">
+                            {group.stream_count ?? "?"} streams
+                          </span>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setPreviewGroup(group)
+                              }}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            {!isEnabled && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-500/10"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleImport(group)
+                                }}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Floating Action Bar */}
+      {selectedGroups.size > 0 && (
+        <div className="fixed bottom-0 left-60 right-0 border-t bg-background p-3 flex items-center justify-between shadow-lg z-50">
+          <div className="flex items-center gap-4">
+            <Checkbox
+              checked={selectedGroups.size > 0}
+              onClick={clearAllSelections}
+            />
+            <span className="text-sm font-medium">
+              {selectedGroups.size} selected
+              {Object.keys(selectionByAccount).length > 1 && (
+                <span className="text-muted-foreground ml-1">
+                  ({Object.entries(selectionByAccount).map(([name, count]) => `${count} from ${name}`).join(", ")})
+                </span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={clearAllSelections}>
+              Clear All
+            </Button>
+            <Button onClick={openBulkModal}>
+              Import {selectedGroups.size} Groups
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      <Dialog open={!!previewGroup} onOpenChange={() => setPreviewGroup(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col" onClose={() => setPreviewGroup(null)}>
+          <DialogHeader>
+            <DialogTitle>Preview: {previewGroup?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {streamsQuery.isLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : streamsQuery.error ? (
+              <div className="text-center text-destructive p-8">
+                Failed to load streams
+              </div>
+            ) : (
+              <>
+                <div className="text-sm text-muted-foreground mb-3">
+                  {streamsQuery.data?.length ?? 0} streams
+                </div>
+                <div className="flex-1 overflow-y-auto border rounded-md">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted">
+                      <tr>
+                        <th className="text-left p-2 font-medium">Stream Name</th>
+                        <th className="text-left p-2 font-medium w-24">ID</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {streamsQuery.data?.map((stream) => (
+                        <tr key={stream.id} className="border-t">
+                          <td className="p-2 truncate max-w-md" title={stream.name}>
+                            {stream.name}
+                          </td>
+                          <td className="p-2 text-muted-foreground">
+                            {stream.id}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Modal */}
+      <Dialog open={showBulkModal} onOpenChange={setShowBulkModal}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col" onClose={() => setShowBulkModal(false)}>
+          <DialogHeader>
+            <DialogTitle>Import {selectedGroups.size} Groups</DialogTitle>
+            <DialogDescription className="flex items-start gap-2 mt-2 p-3 bg-muted/50 rounded-md">
+              <Info className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <span>All groups will use the same settings. You can customize individual groups after import.</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-6 px-1">
+            {/* Settings */}
+            <div className="space-y-4">
+              <Label className="text-sm font-medium">Settings</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Stream Timezone</Label>
+                  <StreamTimezoneSelector
+                    value={bulkStreamTimezone}
+                    onChange={setBulkStreamTimezone}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Enabled</Label>
+                  <div className="flex items-center gap-2 h-9">
+                    <Switch
+                      checked={bulkEnabled}
+                      onCheckedChange={setBulkEnabled}
+                    />
+                    <span className="text-sm">{bulkEnabled ? "Yes" : "No"}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Team stream source</Label>
+                  <div className="flex items-center gap-2 h-9">
+                    <Switch
+                      checked={bulkTeamStreams}
+                      onCheckedChange={setBulkTeamStreams}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {bulkTeamStreams ? "Enabled" : "Disabled"}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">EPG program matching</Label>
+                  <div className="flex items-center gap-2 h-9">
+                    <Switch
+                      checked={bulkEPGMatch}
+                      onCheckedChange={setBulkEPGMatch}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {bulkEPGMatch ? "Enabled" : "Disabled"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Groups to import */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Groups to import</Label>
+              <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-1">
+                {Array.from(selectedGroups.values()).map((group) => (
+                  <div key={`${group.m3u_account_id}:${group.m3u_group_id}`} className="flex items-center justify-between text-sm">
+                    <span className="truncate">{group.m3u_group_name}</span>
+                    <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                      {group.stream_count ?? "?"} streams
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="ghost" onClick={() => setShowBulkModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkImport}
+              disabled={bulkImporting}
+            >
+              {bulkImporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Importing...
+                </>
+              ) : (
+                `Import ${selectedGroups.size} Groups`
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

@@ -1,0 +1,105 @@
+"""EPG settings endpoints."""
+
+from fastapi import APIRouter
+
+from teamarr.database import get_db
+
+from .models import EPGSettingsModel
+
+router = APIRouter()
+
+
+@router.get("/settings/epg", response_model=EPGSettingsModel)
+def get_epg_settings():
+    """Get EPG generation settings."""
+    from teamarr.database.settings import get_epg_settings
+
+    with get_db() as conn:
+        settings = get_epg_settings(conn)
+
+    return EPGSettingsModel(
+        team_schedule_days_ahead=settings.team_schedule_days_ahead,
+        event_match_days_ahead=settings.event_match_days_ahead,
+        epg_output_days_ahead=settings.epg_output_days_ahead,
+        epg_lookback_hours=settings.epg_lookback_hours,
+        epg_timezone=settings.epg_timezone,
+        epg_output_path=settings.epg_output_path,
+        include_final_events=settings.include_final_events,
+        midnight_crossover_mode=settings.midnight_crossover_mode,
+        cron_expression=settings.cron_expression,
+        epg_xtream_fallback_enabled=settings.epg_xtream_fallback_enabled,
+        epg_xtream_cache_hours=settings.epg_xtream_cache_hours,
+        epg_channel_source_enabled=settings.epg_channel_source_enabled,
+        epg_channel_source_groups=settings.epg_channel_source_groups,
+        epg_stream_pre_buffer_minutes=settings.epg_stream_pre_buffer_minutes,
+        epg_stream_post_buffer_minutes=settings.epg_stream_post_buffer_minutes,
+        art_base_url=settings.art_base_url,
+    )
+
+
+@router.put("/settings/epg", response_model=EPGSettingsModel)
+def update_epg_settings(update: EPGSettingsModel):
+    """Update EPG generation settings."""
+    from teamarr.config import set_timezone
+    from teamarr.consumers.scheduler import (
+        get_scheduler_status,
+        start_lifecycle_scheduler,
+        stop_lifecycle_scheduler,
+    )
+    from teamarr.database.settings import get_epg_settings, update_epg_settings
+
+    # Check if cron expression is changing while scheduler is running
+    scheduler_status = get_scheduler_status()
+    scheduler_was_running = scheduler_status.get("running", False)
+    cron_changed = scheduler_status.get("cron_expression") != update.cron_expression
+
+    with get_db() as conn:
+        update_epg_settings(
+            conn,
+            team_schedule_days_ahead=update.team_schedule_days_ahead,
+            event_match_days_ahead=update.event_match_days_ahead,
+            epg_output_days_ahead=update.epg_output_days_ahead,
+            epg_lookback_hours=update.epg_lookback_hours,
+            epg_timezone=update.epg_timezone,
+            epg_output_path=update.epg_output_path,
+            include_final_events=update.include_final_events,
+            midnight_crossover_mode=update.midnight_crossover_mode,
+            cron_expression=update.cron_expression,
+            epg_xtream_fallback_enabled=update.epg_xtream_fallback_enabled,
+            epg_xtream_cache_hours=update.epg_xtream_cache_hours,
+            epg_channel_source_enabled=update.epg_channel_source_enabled,
+            epg_channel_source_groups=update.epg_channel_source_groups,
+            epg_stream_pre_buffer_minutes=update.epg_stream_pre_buffer_minutes,
+            epg_stream_post_buffer_minutes=update.epg_stream_post_buffer_minutes,
+            art_base_url=update.art_base_url,
+        )
+
+    # Update cached timezone so new value is used immediately
+    set_timezone(update.epg_timezone)
+
+    # Restart scheduler if cron expression changed while it was running
+    if scheduler_was_running and cron_changed:
+        stop_lifecycle_scheduler()
+        start_lifecycle_scheduler(get_db)
+
+    with get_db() as conn:
+        settings = get_epg_settings(conn)
+
+    return EPGSettingsModel(
+        team_schedule_days_ahead=settings.team_schedule_days_ahead,
+        event_match_days_ahead=settings.event_match_days_ahead,
+        epg_output_days_ahead=settings.epg_output_days_ahead,
+        epg_lookback_hours=settings.epg_lookback_hours,
+        epg_timezone=settings.epg_timezone,
+        epg_output_path=settings.epg_output_path,
+        include_final_events=settings.include_final_events,
+        midnight_crossover_mode=settings.midnight_crossover_mode,
+        cron_expression=settings.cron_expression,
+        epg_xtream_fallback_enabled=settings.epg_xtream_fallback_enabled,
+        epg_xtream_cache_hours=settings.epg_xtream_cache_hours,
+        epg_channel_source_enabled=settings.epg_channel_source_enabled,
+        epg_channel_source_groups=settings.epg_channel_source_groups,
+        epg_stream_pre_buffer_minutes=settings.epg_stream_pre_buffer_minutes,
+        epg_stream_post_buffer_minutes=settings.epg_stream_post_buffer_minutes,
+        art_base_url=settings.art_base_url,
+    )

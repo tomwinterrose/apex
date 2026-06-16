@@ -1,0 +1,301 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* V1-matching dark theme colors (slate palette)
+     oklch format enables Tailwind v4 alpha modifiers (e.g. bg-primary/50) */
+  --color-background: oklch(20.77% 0.04 265.75);
+  --color-foreground: oklch(96.83% 0.007 247.9);
+  --color-card: oklch(27.95% 0.037 260.03);
+  --color-card-foreground: oklch(96.83% 0.007 247.9);
+  --color-popover: oklch(27.95% 0.037 260.03);
+  --color-popover-foreground: oklch(96.83% 0.007 247.9);
+  --color-primary: oklch(62.31% 0.188 259.81);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(37.17% 0.039 257.29);
+  --color-secondary-foreground: oklch(96.83% 0.007 247.9);
+  --color-muted: oklch(37.17% 0.039 257.29);
+  --color-muted-foreground: oklch(71.07% 0.035 256.79);
+  --color-accent: oklch(37.17% 0.039 257.29);
+  --color-accent-foreground: oklch(96.83% 0.007 247.9);
+  --color-destructive: oklch(63.68% 0.208 25.33);
+  --color-destructive-foreground: oklch(100% 0 0);
+  --color-border: oklch(27.95% 0.037 260.03);
+  --color-input: oklch(37.17% 0.039 257.29);
+  --color-ring: oklch(62.31% 0.188 259.81);
+
+  /* Status colors matching V1 */
+  --color-success: oklch(69.59% 0.149 162.48);
+  --color-warning: oklch(76.86% 0.165 70.08);
+  --color-error: oklch(63.68% 0.208 25.33);
+  --color-info: oklch(71.48% 0.126 215.22);
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+/* Light theme - matching V1 */
+.light {
+  --color-background: oklch(98.42% 0.003 247.86);
+  --color-foreground: oklch(20.77% 0.04 265.75);
+  --color-card: oklch(100% 0 0);
+  --color-card-foreground: oklch(20.77% 0.04 265.75);
+  --color-popover: oklch(100% 0 0);
+  --color-popover-foreground: oklch(20.77% 0.04 265.75);
+  --color-secondary: oklch(92.88% 0.013 255.51);
+  --color-secondary-foreground: oklch(20.77% 0.04 265.75);
+  --color-muted: oklch(92.88% 0.013 255.51);
+  --color-muted-foreground: oklch(55.44% 0.041 257.42);
+  --color-accent: oklch(92.88% 0.013 255.51);
+  --color-accent-foreground: oklch(20.77% 0.04 265.75);
+  --color-border: oklch(86.9% 0.02 252.89);
+  --color-input: oklch(86.9% 0.02 252.89);
+}
+
+/* Base styles */
+html {
+  color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  min-height: 100vh;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Set default border color to match V1 (subtle, dark).
+   MUST be in @layer base so Tailwind utility classes (e.g. border-muted-foreground)
+   in @layer utilities can override it. Unlayered styles beat all layers per CSS spec. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-muted);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* V1-like compact styling */
+
+/* Compact tables */
+table {
+  font-size: 0.85rem;
+}
+
+table th,
+table td {
+  padding: 0.5rem;
+}
+
+table th {
+  background-color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+table td {
+  color: var(--color-muted-foreground);
+}
+
+/* Compact badges */
+.badge {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* Compact buttons */
+button {
+  font-size: 0.85rem;
+}
+
+/* Compact cards */
+.card-header {
+  padding: 0.75rem 1rem;
+}
+
+.card-content {
+  padding: 0.75rem 1rem;
+}
+
+/* Dropdown option styling (don't override component-level select styles) */
+select option {
+  background-color: var(--color-card);
+  color: var(--color-foreground);
+}
+
+/* Hide number input spinners for cleaner look */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* V1-like settings sections */
+.settings-section {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.settings-section h2 {
+  margin: 0 0 0.625rem 0;
+  font-size: 0.9375rem;
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+
+.settings-section p.section-desc {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.875rem;
+}
+
+.settings-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.875rem;
+}
+
+.settings-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.875rem;
+}
+
+.settings-field label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+  font-size: 0.8125rem;
+}
+
+.settings-field .help-text {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+}
+
+.settings-subsection {
+  background: var(--color-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
+}
+
+.settings-subsection h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8125rem;
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+
+/* Radio button groups (V1 style) */
+.radio-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.radio-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 0.8125rem;
+}
+
+.radio-btn:hover {
+  border-color: var(--color-primary);
+}
+
+.radio-btn.active {
+  border-color: var(--color-primary);
+  background: oklch(62.31% 0.188 259.81 / 0.1);
+}
+
+.radio-btn input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.radio-example {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  margin-left: 0.25rem;
+}
+
+/* Animations */
+.animate-slide-down {
+  animation: slide-down 0.2s ease-out forwards;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

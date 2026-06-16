@@ -1,0 +1,228 @@
+"""Template variable resolver.
+
+Resolves {variable} placeholders in template strings using registered extractors.
+Supports three suffix types: base, .next, .last
+
+Also supports conditional descriptions - selecting the best template based on
+game conditions (is_home, win_streak, etc.) and priority.
+"""
+
+import logging
+import re
+from typing import Any
+
+from teamarr.templates.conditions import get_condition_selector
+from teamarr.templates.context import GameContext, TemplateContext
+from teamarr.templates.variables import SuffixRules, get_registry
+
+logger = logging.getLogger(__name__)
+
+# Pattern matches: {variable} or {variable.next} or {variable.last}
+# Note: @ is allowed to support {vs_@} variable
+VARIABLE_PATTERN = re.compile(r"\{([a-z_][a-z0-9_@]*(?:\.[a-z]+)?)\}", re.IGNORECASE)
+
+
+class TemplateResolver:
+    """Resolves template variables in strings.
+
+    Usage:
+        resolver = TemplateResolver()
+        result = resolver.resolve("{team_name} vs {opponent}", context)
+        # -> "Detroit Lions vs Chicago Bears"
+
+        # Conditional descriptions
+        options = '[{"condition": "is_home", "priority": 50, "template": "Home: {team_name}"}]'
+        result = resolver.resolve_conditional(options, context)
+    """
+
+    def __init__(self, art_base_url: str = "") -> None:
+        self._registry = get_registry()
+        self._condition_selector = get_condition_selector()
+        # Game-thumbs base URL (epic z02s), applied by resolve_art() so every art
+        # sink (EPG icon, Dispatcharr channel logo, fillers) reconstructs URLs the
+        # same way. Empty = no prefixing.
+        self.art_base_url = art_base_url or ""
+
+    def resolve_art(self, template: str, context: TemplateContext) -> str:
+        """Resolve an art/icon field, then apply the game-thumbs base URL.
+
+        The single entry point for ALL art/logo URLs so the base-URL reconstruction
+        happens in one place and propagates to every consumer. Relative paths get
+        the base prefixed; absolute URLs pass through unchanged (idempotent).
+        """
+        from teamarr.utilities.art_url import apply_art_base_url
+
+        return apply_art_base_url(self.resolve(template, context), self.art_base_url) or ""
+
+    def resolve(self, template: str, context: TemplateContext) -> str:
+        """Replace all {variable} placeholders with values.
+
+        Args:
+            template: String with {variable} placeholders
+            context: Complete template context
+
+        Returns:
+            String with all variables resolved
+        """
+        if not template:
+            return ""
+
+        # Build all variables (base + suffixed)
+        variables = self._build_all_variables(context)
+
+        unreplaced = []
+
+        def replace(match: re.Match) -> str:
+            var_name = match.group(1).lower()
+            # Keep unknown variables literal (helps users identify typos)
+            # Known variables with empty values still get replaced with ""
+            if var_name not in variables:
+                unreplaced.append(var_name)
+                return match.group(0)  # Return original {variable} unchanged
+            return variables[var_name]
+
+        result = VARIABLE_PATTERN.sub(replace, template)
+
+        if unreplaced:
+            logger.debug("[UNREPLACED] Template variables: %s", unreplaced)
+
+        # Clean up artifacts from empty variables (e.g., double spaces, empty wrappers)
+        result = self._cleanup_result(result)
+
+        return result
+
+    def _cleanup_result(self, text: str) -> str:
+        """Clean up artifacts left when variables resolve to empty strings.
+
+        Removes:
+        - Empty parentheses/brackets: () []
+        - Multiple consecutive spaces
+        - Leading/trailing whitespace
+        """
+        # Remove empty parentheses and brackets
+        text = re.sub(r"\s*\(\s*\)", "", text)
+        text = re.sub(r"\s*\[\s*\]", "", text)
+
+        # Collapse multiple spaces into one
+        text = re.sub(r" {2,}", " ", text)
+
+        return text.strip()
+
+    def _build_all_variables(self, ctx: TemplateContext) -> dict[str, str]:
+        """Build complete variable dict with all suffixes.
+
+        Generates up to 3 values per variable:
+        - base (no suffix): from ctx.game_context
+        - .next suffix: from ctx.next_game
+        - .last suffix: from ctx.last_game
+
+        Suffix generation follows each variable's SuffixRules.
+        """
+        variables: dict[str, str] = {}
+
+        for var_def in self._registry.all_variables():
+            rules = var_def.suffix_rules
+
+            # Base variable (current game)
+            if rules != SuffixRules.LAST_ONLY:
+                value = var_def.extractor(ctx, ctx.game_context)
+                variables[var_def.name] = value
+
+            # .next suffix
+            if rules in (SuffixRules.ALL, SuffixRules.BASE_NEXT_ONLY):
+                if ctx.next_game:
+                    value = var_def.extractor(ctx, ctx.next_game)
+                    variables[f"{var_def.name}.next"] = value
+
+            # .last suffix
+            if rules in (SuffixRules.ALL, SuffixRules.LAST_ONLY):
+                if ctx.last_game:
+                    value = var_def.extractor(ctx, ctx.last_game)
+                    variables[f"{var_def.name}.last"] = value
+
+        # Merge extra_vars (override extractor values for injected variables)
+        if ctx.extra_vars:
+            for key, val in ctx.extra_vars.items():
+                variables[key.lower()] = val
+
+        return variables
+
+    def resolve_conditional(
+        self,
+        description_options: str | list[dict[str, Any]] | None,
+        context: TemplateContext,
+        game_ctx: GameContext | None = None,
+    ) -> str:
+        """Select and resolve a conditional description.
+
+        Evaluates conditions against the game context to select the best
+        template, then resolves variables in that template.
+
+        Args:
+            description_options: JSON string or list of description options.
+                Each option has: condition, condition_value, priority, template
+            context: Template context
+            game_ctx: Game context for condition evaluation.
+                If None, uses context.game_context.
+
+        Returns:
+            Resolved description string, or empty string if no match.
+
+        Example:
+            options = [
+                {"condition": "win_streak", "condition_value": "5", "priority": 10,
+                 "template": "{team_name} on a {win_streak}-game win streak!"},
+                {"condition": "is_home", "priority": 50,
+                 "template": "{team_name} hosts {opponent}"},
+                {"priority": 100, "template": "{team_name} vs {opponent}"}  # Fallback
+            ]
+            result = resolver.resolve_conditional(options, ctx)
+        """
+        if game_ctx is None:
+            game_ctx = context.game_context
+
+        # Select the best template based on conditions
+        template = self._condition_selector.select(description_options, context, game_ctx)
+
+        if not template:
+            logger.debug("[CONDITION] No matching template found")
+            return ""
+
+        # Resolve variables in the selected template
+        return self.resolve(template, context)
+
+    def get_available_variables(self) -> list[str]:
+        """Get list of all registered variable names."""
+        return [v.name for v in self._registry.all_variables()]
+
+    def get_variable_count(self) -> int:
+        """Get count of registered variables."""
+        return self._registry.count()
+
+    def get_available_conditions(self) -> list[str]:
+        """Get list of all available condition types."""
+        return [
+            "is_home",
+            "is_away",
+            "win_streak",
+            "loss_streak",
+            "is_ranked",
+            "is_ranked_opponent",
+            "is_ranked_matchup",
+            "is_top_ten_matchup",
+            "is_conference_game",
+            "is_playoff",
+            "is_preseason",
+            "is_national_broadcast",
+            "has_odds",
+            "opponent_name_contains",
+            "always",
+        ]
+
+
+def resolve(template: str, context: TemplateContext) -> str:
+    """Convenience function for one-off resolution.
+
+    For repeated resolution, create a TemplateResolver instance instead.
+    """
+    return TemplateResolver().resolve(template, context)

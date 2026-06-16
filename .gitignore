@@ -1,0 +1,64 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+wheels/
+*.manifest
+*.spec
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
+*.db
+*.sqlite
+*.log
+.env
+
+# Local documentation (not distributed)
+docs/reference/providers/tsdb-api.md
+CLAUDE.md
+DEVELOPMENT.md
+teamarr.xml
+teamarr.xml.bak
+data/
+!data/tsdb_seed.json
+
+# Local dev scripts
+dev.sh
+.gitattributes
+
+# Plans and status (local only)
+plans/
+
+# Playwright / browser debug artifacts (root only — frontend/public PNGs are tracked)
+/*.png
+.playwright-mcp/
+fix-flow-snapshot.yml
