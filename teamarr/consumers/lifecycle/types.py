@@ -172,14 +172,14 @@ def generate_event_tvg_id(
 
     Returns:
         Formatted tvg_id. Examples:
-        - "teamarr-event-401547679"
-        - "teamarr-event-401547679-prelims"
-        - "teamarr-event-401547679-spanish"
-        - "teamarr-event-401547679-prelims-spanish"
-        - "teamarr-event-401547679-feed-23"
-        - "teamarr-event-401547679-spanish-feed-23"
+        - "vroomarr-event-401547679"
+        - "vroomarr-event-401547679-prelims"
+        - "vroomarr-event-401547679-spanish"
+        - "vroomarr-event-401547679-prelims-spanish"
+        - "vroomarr-event-401547679-feed-23"
+        - "vroomarr-event-401547679-spanish-feed-23"
     """
-    parts = [f"teamarr-event-{event_id}"]
+    parts = [f"vroomarr-event-{event_id}"]
     if segment:
         parts.append(segment)
     if exception_keyword:
