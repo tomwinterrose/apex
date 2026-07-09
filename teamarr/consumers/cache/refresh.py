@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Expected league counts per provider (for progress estimation)
 # These are approximate and used for work-proportional progress allocation
 EXPECTED_LEAGUES = {
-    "espn": 280,  # ~52 configured + ~228 discovered soccer leagues
+    "espn": 2,  # f1, indycar (motogp configured but disabled)
     "tsdb": 6,  # NRL, Boxing, IPL, BBL, SA20, Svenska Cupen + free tier leagues
     "hockeytech": 6,
     "mlbstats": 5,  # AAA, AA, High-A, Single-A, Rookie
@@ -390,7 +390,6 @@ class CacheRefresher:
         """Discover all leagues and teams from a provider.
 
         Uses the provider's get_supported_leagues() and get_league_teams() methods.
-        For ESPN, also does dynamic soccer league discovery.
 
         Args:
             provider: The sports provider to discover from
@@ -423,16 +422,6 @@ class CacheRefresher:
                     len(skipped),
                     ", ".join(skipped),
                 )
-
-        # For ESPN, also discover dynamic soccer leagues
-        if provider_name == "espn":
-            if progress_callback:
-                progress_callback("Discovering ESPN soccer leagues...", 0)
-            soccer_slugs = self._fetch_espn_soccer_league_slugs(progress_callback)
-            # Add soccer leagues not already in supported_leagues
-            for slug in soccer_slugs:
-                if slug not in supported_leagues:
-                    supported_leagues.append(slug)
 
         if not supported_leagues:
             logger.info("[CACHE_REFRESH] No leagues found for provider %s", provider_name)
@@ -580,83 +569,6 @@ class CacheRefresher:
 
         # Default fallback
         return "sports"
-
-    def _fetch_espn_soccer_league_slugs(
-        self, progress_callback: Callable[[str, int], None] | None = None
-    ) -> list[str]:
-        """Fetch all ESPN soccer league slugs."""
-        import httpx
-
-        url = "https://sports.core.api.espn.com/v2/sports/soccer/leagues?limit=500"
-
-        try:
-            with httpx.Client(timeout=30) as client:
-                response = client.get(url)
-                response.raise_for_status()
-                data = response.json()
-
-            # Extract league refs and fetch slugs
-            league_refs = data.get("items", [])
-            slugs = []
-            total = len(league_refs)
-            completed = 0
-
-            def fetch_slug(ref_url: str) -> str | None:
-                try:
-                    with httpx.Client(timeout=10) as client:
-                        resp = client.get(ref_url)
-                        if resp.status_code == 200:
-                            return resp.json().get("slug")
-                except (httpx.RequestError, httpx.HTTPStatusError) as e:
-                    logger.debug(
-                        "[CACHE_REFRESH] Failed to fetch league slug from %s: %s", ref_url, e
-                    )
-                return None
-
-            # Fetch slugs in parallel
-            with ThreadPoolExecutor(max_workers=self.MAX_WORKERS) as executor:
-                futures = {
-                    executor.submit(fetch_slug, ref["$ref"]): ref
-                    for ref in league_refs
-                    if "$ref" in ref
-                }
-
-                for future in as_completed(futures):
-                    completed += 1
-                    # Report progress during discovery (maps to 0-10% of provider range)
-                    if progress_callback and completed % 5 == 0:
-                        discovery_pct = int((completed / total) * 10)  # 0-10%
-                        progress_callback(
-                            f"Discovering soccer leagues: {completed}/{total}", discovery_pct
-                        )
-
-                    slug = future.result()
-                    if slug and self._should_include_soccer_league(slug):
-                        slugs.append(slug)
-
-            logger.info("[CACHE_REFRESH] Found %d ESPN soccer leagues", len(slugs))
-            return slugs
-
-        except Exception as e:
-            logger.error("[CACHE_REFRESH] Failed to fetch ESPN soccer leagues: %s", e)
-            return []
-
-    def _should_include_soccer_league(self, slug: str) -> bool:
-        """Filter out junk soccer leagues."""
-        skip_slugs = {
-            "nonfifa", "usa.ncaa.m.1", "usa.ncaa.w.1",
-            # uru.2: ESPN data is severely stale (2011 roster, 2010 scoreboard).
-            # Configured as TSDB-only in schema.sql.
-            "uru.2",
-        }
-        skip_patterns = ["not_used"]
-
-        if slug in skip_slugs:
-            return False
-        for pattern in skip_patterns:
-            if pattern in slug:
-                return False
-        return True
 
     def _save_cache(self, teams: list[dict], leagues: list[dict]) -> None:
         """Save teams and leagues to database using batch inserts."""
