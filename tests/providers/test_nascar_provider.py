@@ -10,6 +10,7 @@ Exercises NASCARProvider with mocked HTTP responses to verify:
 """
 
 from datetime import UTC, date, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 
@@ -260,6 +261,31 @@ def test_get_events_off_day_returns_empty():
 def test_get_events_unsupported_league_returns_empty():
     p = _provider_with_data(cup=_CUP_RESPONSE)
     assert p.get_events("f1", date(2026, 2, 11)) == []
+
+
+# ---------------------------------------------------------------------------
+# get_supported_leagues
+# ---------------------------------------------------------------------------
+
+
+class _Mapping:
+    """LeagueMappingSource stand-in: only nascar-cup is configured."""
+
+    def supports_league(self, league, provider):
+        return league == "nascar-cup" and provider == "nascar"
+
+    def get_leagues_for_provider(self, provider):
+        return [SimpleNamespace(league_code="nascar-cup")]
+
+
+def test_get_supported_leagues_without_mapping_source_returns_all_configured():
+    p = NASCARProvider(league_mapping_source=None)
+    assert p.get_supported_leagues() == ["nascar-cup", "nascar-xfinity", "nascar-truck"]
+
+
+def test_get_supported_leagues_from_mapping():
+    p = NASCARProvider(league_mapping_source=_Mapping())
+    assert p.get_supported_leagues() == ["nascar-cup"]
 
 
 # ---------------------------------------------------------------------------

@@ -112,6 +112,17 @@ class NASCARProvider(SportsProvider):
             return True
         return self._league_mapping_source.supports_league(league, self.name)
 
+    def get_supported_leagues(self) -> list[str]:
+        """Get all leagues this provider supports.
+
+        Returns only leagues explicitly configured in the database.
+        """
+        if not self._league_mapping_source:
+            return list(_LEAGUE_CONFIG)
+
+        mappings = self._league_mapping_source.get_leagues_for_provider(self.name)
+        return sorted(m.league_code for m in mappings if m.league_code in _LEAGUE_CONFIG)
+
     def get_events(self, league: str, target_date: date) -> list[Event]:
         if not self.supports_league(league):
             return []
