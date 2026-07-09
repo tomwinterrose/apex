@@ -1,6 +1,6 @@
 services:
   vroomarr:
-    build: .
+    image: ghcr.io/tomwinterrose/vroomarr:latest
     ports:
       - "9198:9198"
     volumes:
