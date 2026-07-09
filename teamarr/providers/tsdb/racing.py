@@ -151,6 +151,19 @@ def parse_racing_events(
     for event_data in events:
         season = str(event_data.get("strSeason") or "")
         round_ = str(event_data.get("intRound") or "")
+        if not round_:
+            # Defensive: TSDB occasionally omits intRound. Without a round key
+            # every weekend in the season collapses into one bogus group, so
+            # fall back to the event's ISO week — sessions of a single race
+            # weekend share it, while distinct weekends stay separate.
+            dt = _event_start_time(event_data)
+            round_ = f"wk{dt.isocalendar()[1]}" if dt else "?"
+            logger.debug(
+                "[TSDB_RACING] %s: event %r missing intRound; keyed by %r",
+                league,
+                event_data.get("strEvent"),
+                round_,
+            )
         groups.setdefault((season, round_), []).append(event_data)
 
     parsed_events = []

@@ -15,9 +15,17 @@ ProviderRegistry.initialize() must be called during app startup
 to inject the LeagueMappingSource into providers.
 """
 
+from collections.abc import Callable
+
+from teamarr.database import get_db
+from teamarr.database.team_cache import get_team_name_by_id
 from teamarr.providers.espn import ESPNClient, ESPNProvider
+from teamarr.providers.hockeytech import HockeyTechClient, HockeyTechProvider
+from teamarr.providers.mlbstats import MLBStatsClient, MLBStatsProvider
+from teamarr.providers.nascar import NASCARProvider
 from teamarr.providers.registry import ProviderConfig, ProviderRegistry
-from teamarr.providers.static import StaticCalendarProvider
+from teamarr.providers.squiggle import SquiggleClient, SquiggleProvider
+from teamarr.providers.supabase import SupabaseLeagueClient, SupabaseProvider
 from teamarr.providers.tsdb import RateLimitStats, TSDBClient, TSDBProvider
 
 # =============================================================================
@@ -40,7 +48,6 @@ def _get_tsdb_api_key() -> str | None:
     passing to the provider layer (which should not access database).
     """
     try:
-        from teamarr.database import get_db
 
         with get_db() as conn:
             cursor = conn.execute("SELECT tsdb_api_key FROM settings WHERE id = 1")
@@ -54,14 +61,12 @@ def _get_tsdb_api_key() -> str | None:
     return None
 
 
-def _create_tsdb_team_name_resolver() -> callable:
+def _create_tsdb_team_name_resolver() -> Callable[[str, str], str | None]:
     """Create a team name resolver callback for TSDB provider.
 
     This callback accesses the database, keeping DB access at the factory
     boundary rather than inside the provider layer.
     """
-    from teamarr.database import get_db
-    from teamarr.database.team_cache import get_team_name_by_id
 
     def resolver(team_id: str, league: str) -> str | None:
         with get_db() as conn:
@@ -79,9 +84,37 @@ def _create_tsdb_provider() -> TSDBProvider:
     )
 
 
-def _create_static_calendar_provider() -> StaticCalendarProvider:
-    """Factory for static calendar provider with injected dependencies."""
-    return StaticCalendarProvider(
+def _create_hockeytech_provider() -> HockeyTechProvider:
+    """Factory for HockeyTech provider with injected dependencies."""
+    return HockeyTechProvider(
+        league_mapping_source=ProviderRegistry.get_league_mapping_source(),
+    )
+
+
+def _create_supabase_provider() -> SupabaseProvider:
+    """Factory for Supabase provider with injected dependencies."""
+    return SupabaseProvider(
+        league_mapping_source=ProviderRegistry.get_league_mapping_source(),
+    )
+
+
+def _create_mlbstats_provider() -> MLBStatsProvider:
+    """Factory for MLB Stats provider with injected dependencies."""
+    return MLBStatsProvider(
+        league_mapping_source=ProviderRegistry.get_league_mapping_source(),
+    )
+
+
+def _create_squiggle_provider() -> SquiggleProvider:
+    """Factory for Squiggle provider with injected dependencies."""
+    return SquiggleProvider(
+        league_mapping_source=ProviderRegistry.get_league_mapping_source(),
+    )
+
+
+def _create_nascar_provider() -> NASCARProvider:
+    """Factory for NASCAR provider with injected dependencies."""
+    return NASCARProvider(
         league_mapping_source=ProviderRegistry.get_league_mapping_source(),
     )
 
@@ -101,21 +134,52 @@ ProviderRegistry.register(
 )
 
 ProviderRegistry.register(
-    name="tsdb",
-    provider_class=TSDBProvider,
-    factory=_create_tsdb_provider,
-    priority=100,  # IMSA, WEC, and other motorsports leagues
+    name="hockeytech",
+    provider_class=HockeyTechProvider,
+    factory=_create_hockeytech_provider,
+    priority=50,  # CHL leagues (OHL, WHL, QMJHL) + AHL, PWHL, USHL
     enabled=True,
 )
 
 ProviderRegistry.register(
-    name="static",
-    provider_class=StaticCalendarProvider,
-    factory=_create_static_calendar_provider,
-    priority=110,  # Hand-maintained calendars for leagues with no live API (IMSA, WEC)
+    name="supabase",
+    provider_class=SupabaseProvider,
+    factory=_create_supabase_provider,
+    priority=55,  # Supabase-backed leagues (CBL, etc.)
     enabled=True,
 )
 
+ProviderRegistry.register(
+    name="mlbstats",
+    provider_class=MLBStatsProvider,
+    factory=_create_mlbstats_provider,
+    priority=40,  # MiLB / Triple-A provider
+    enabled=True,
+)
+
+ProviderRegistry.register(
+    name="squiggle",
+    provider_class=SquiggleProvider,
+    factory=_create_squiggle_provider,
+    priority=30,  # AFL primary provider — free, no key required
+    enabled=True,
+)
+
+ProviderRegistry.register(
+    name="nascar",
+    provider_class=NASCARProvider,
+    factory=_create_nascar_provider,
+    priority=35,  # NASCAR Cup/ORAP/Trucks — authoritative session schedules
+    enabled=True,
+)
+
+ProviderRegistry.register(
+    name="tsdb",
+    provider_class=TSDBProvider,
+    factory=_create_tsdb_provider,
+    priority=100,  # Fallback provider for boxing, etc.
+    enabled=True,
+)
 
 # =============================================================================
 # EXPORTS
@@ -128,8 +192,20 @@ __all__ = [
     # ESPN
     "ESPNClient",
     "ESPNProvider",
-    # Static calendar (IMSA, WEC)
-    "StaticCalendarProvider",
+    # HockeyTech
+    "HockeyTechClient",
+    "HockeyTechProvider",
+    # MLB Stats
+    "MLBStatsClient",
+    "MLBStatsProvider",
+    # Supabase
+    "SupabaseLeagueClient",
+    "SupabaseProvider",
+    # Squiggle (AFL)
+    "SquiggleClient",
+    "SquiggleProvider",
+    # NASCAR
+    "NASCARProvider",
     # TheSportsDB
     "RateLimitStats",
     "TSDBClient",

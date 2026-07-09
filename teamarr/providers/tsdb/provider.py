@@ -159,6 +159,31 @@ class TSDBProvider(SportsProvider):
 
         return []
 
+    def get_sample_candidates(self, league: str) -> list[Event]:
+        """Recent + upcoming events for a league in two bulk calls.
+
+        Used for the template live preview: pulls the last finished events
+        (eventspastleague) and the next scheduled ones (eventsnextleague) so the
+        caller can prefer a just-completed game (recap/score vars) over an
+        upcoming one. Two calls total — safe for the rate-limited free tier,
+        unlike a per-day scan. Racing leagues go through the season path.
+        """
+        if self._client.get_sport(league) == "racing":
+            return self._get_racing_events(league)
+
+        events: list[Event] = []
+        for fetch in (
+            self._client.get_league_past_events,
+            self._client.get_league_next_events,
+        ):
+            data = fetch(league)
+            rows = (data or {}).get("results") or (data or {}).get("events") or []
+            for row in rows:
+                event = self._parse_event(row, league)
+                if event:
+                    events.append(event)
+        return events
+
     def _get_racing_events(self, league: str) -> list[Event]:
         """Get all session-grouped racing events for a league's current season(s).
 

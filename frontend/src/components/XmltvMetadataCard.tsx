@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 import { SaveButton } from "@/components/ui/save-button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -19,9 +19,15 @@ export function XmltvMetadataCard() {
 
   const [display, setDisplay] = useState<DisplaySettings | null>(null)
 
-  useEffect(() => {
-    if (displayData) setDisplay(displayData)
-  }, [displayData])
+  // Sync the form from the server data during render (React's "adjusting
+  // state when a prop changes" pattern) — re-seeds on every refetch, exactly
+  // like the previous effect, without the extra effect render pass.
+  const [syncedDisplayData, setSyncedDisplayData] =
+    useState<typeof displayData>(undefined)
+  if (displayData && displayData !== syncedDisplayData) {
+    setSyncedDisplayData(displayData)
+    setDisplay(displayData)
+  }
 
   const handleSave = async () => {
     if (!display) return
@@ -53,9 +59,9 @@ export function XmltvMetadataCard() {
             <Label htmlFor="xmltv-url">XMLTV Generator URL</Label>
             <Input
               id="xmltv-url"
-              value={display?.xmltv_generator_url ?? "https://github.com/Pharaoh-Labs/teamarr"}
+              value={display?.xmltv_generator_url ?? "https://github.com/tomwinterrose/vroomarr"}
               onChange={(e) => display && setDisplay({ ...display, xmltv_generator_url: e.target.value })}
-              placeholder="https://github.com/Pharaoh-Labs/teamarr"
+              placeholder="https://github.com/tomwinterrose/vroomarr"
             />
           </div>
         </div>

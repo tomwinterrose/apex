@@ -7,6 +7,8 @@ import json
 import logging
 from sqlite3 import Connection
 
+from teamarr.utilities.tz import now_user
+
 from .types import ManagedChannel
 
 logger = logging.getLogger(__name__)
@@ -118,6 +120,7 @@ def create_managed_channel(
         values,
     )
     channel_id = cursor.lastrowid
+    assert channel_id is not None  # just-inserted row always has a rowid
     logger.info(
         "[CREATED] Managed channel id=%d name=%s event=%s", channel_id, channel_name, event_id
     )
@@ -270,7 +273,6 @@ def get_channels_pending_deletion(conn: Connection) -> list[ManagedChannel]:
 
     from dateutil import parser
 
-    from teamarr.utilities.tz import now_user
 
     # Get all active channels with scheduled_delete_at
     cursor = conn.execute(

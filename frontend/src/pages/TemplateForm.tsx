@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useRef, useMemo } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
-import { ArrowLeft, Loader2, User, Tv, ArrowRight } from "lucide-react"
+import { ArrowLeft, User, Tv, ArrowRight } from "lucide-react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { SaveButton } from "@/components/ui/save-button"
 import { SubNav } from "@/components/ui/sub-nav"
 import {
@@ -13,7 +14,7 @@ import {
   type TemplateCreate,
   type FillerContent,
 } from "@/api/templates"
-import { fetchVariables, fetchSamples } from "@/api/variables"
+import { fetchVariables, fetchSamples, fetchSampleLeagues } from "@/api/variables"
 import { buildValidVariableSet } from "@/utils/templateValidation"
 import type { Tab } from "./template-form/types"
 import {
@@ -41,7 +42,11 @@ export function TemplateForm() {
   const [activeTab, setActiveTab] = useState<Tab>("basic")
   const [formData, setFormData] = useState<TemplateCreate>(DEFAULT_FORM)
   const [lastFocusedField, setLastFocusedField] = useState<string | null>(null)
-  const [previewSport, setPreviewSport] = useState("NBA")
+  const [previewLeague, setPreviewLeague] = useState("nba")
+  // Default to live: preview real event data when available (green "Live"
+  // indicator), falling back to static samples when there's no event. TSDB
+  // leagues read cache-only so this can't hammer the free tier.
+  const [liveRequested, setLiveRequested] = useState(true)
 
   // Refs for template fields
   const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({})
@@ -63,26 +68,54 @@ export function TemplateForm() {
     staleTime: Infinity,
   })
 
-  // Fetch sample data for preview (sport-specific)
+  // Leagues to preview against: all enabled leagues, with the subscribed subset
+  // shown by default in the sidebar (search reaches the full list).
+  const { data: sampleLeaguesData } = useQuery({
+    queryKey: ["sample-leagues"],
+    queryFn: fetchSampleLeagues,
+    staleTime: 60 * 60 * 1000, // 1 hour
+  })
+  const previewLeagues = sampleLeaguesData?.leagues ?? []
+  const subscribedSlugs = sampleLeaguesData?.subscribed_slugs ?? []
+
+  // Keep the preview league valid against the fetched list. Prefer a subscribed
+  // league (nba if subscribed, else the first subscribed), then nba, then the
+  // first available league. Adjusted during render (React's "adjusting state
+  // when a prop changes" pattern) — the guard is self-correcting: once the
+  // league is in the list the branch no longer fires.
+  if (previewLeagues.length > 0 && !previewLeagues.some((l) => l.slug === previewLeague)) {
+    const subscribed = new Set(subscribedSlugs)
+    const fallback =
+      (subscribed.has("nba") ? previewLeagues.find((l) => l.slug === "nba") : undefined) ??
+      previewLeagues.find((l) => subscribed.has(l.slug)) ??
+      previewLeagues.find((l) => l.slug === "nba") ??
+      previewLeagues[0]
+    setPreviewLeague(fallback.slug)
+  }
+
+  // Fetch sample data for preview (league-specific, optionally live)
   const { data: samplesData } = useQuery({
-    queryKey: ["samples", previewSport],
-    queryFn: () => fetchSamples(previewSport),
+    queryKey: ["samples", previewLeague, liveRequested],
+    queryFn: () => fetchSamples(previewLeague, { byLeague: true, live: liveRequested }),
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 
   // Create resolver with current sample data
   const sampleData = samplesData?.samples ?? DEFAULT_SAMPLE_DATA
   const resolveTemplate = createResolver(sampleData)
-  const availableSports = samplesData?.available_sports ?? variablesData?.available_sports ?? ["NBA", "NFL", "MLB", "NHL"]
+  const isLivePreview = samplesData?.live ?? false
 
-  // Build validation set from variables data
+  // Build validation set from variables data. The optional chain is hoisted
+  // out of the memo so the manual dependency matches what the React Compiler
+  // infers (preserve-manual-memoization).
+  const variableCategories = variablesData?.categories
   const validationData = useMemo(() => {
-    if (!variablesData?.categories) {
+    if (!variableCategories) {
       return { validNames: new Set<string>(), baseNames: new Set<string>() }
     }
-    const { validNames, baseNames } = buildValidVariableSet(variablesData.categories)
+    const { validNames, baseNames } = buildValidVariableSet(variableCategories)
     return { validNames, baseNames }
-  }, [variablesData?.categories])
+  }, [variableCategories])
 
   // Helper to merge filler content with defaults, ensuring no null values
   const mergeFillerContent = (content: FillerContent | null, defaults: FillerContent): FillerContent => {
@@ -95,39 +128,41 @@ export function TemplateForm() {
     }
   }
 
-  // Populate form when template loads
-  useEffect(() => {
-    if (template) {
-      setFormData({
-        name: template.name,
-        template_type: template.template_type,
-        sport: template.sport,
-        league: template.league,
-        title_format: template.title_format || "",
-        subtitle_template: template.subtitle_template,
-        description_template: template.description_template,
-        program_art_url: template.program_art_url,
-        game_duration_mode: template.game_duration_mode || "sport",
-        game_duration_override: template.game_duration_override,
-        xmltv_flags: template.xmltv_flags || { new: true, live: false, date: false },
-        xmltv_video: template.xmltv_video || { enabled: false, quality: "HDTV" },
-        xmltv_categories: template.xmltv_categories || ["Sports"],
-        xmltv_filler_categories: template.xmltv_filler_categories || [],
-        pregame_enabled: template.pregame_enabled ?? true,
-        pregame_fallback: mergeFillerContent(template.pregame_fallback, DEFAULT_PREGAME),
-        postgame_enabled: template.postgame_enabled ?? true,
-        postgame_fallback: mergeFillerContent(template.postgame_fallback, DEFAULT_POSTGAME),
-        postgame_conditional: template.postgame_conditional || { enabled: true, title_final: null, title_not_final: null, subtitle_final: null, subtitle_not_final: null, description_final: null, description_not_final: null },
-        idle_enabled: template.idle_enabled ?? true,
-        idle_content: mergeFillerContent(template.idle_content, DEFAULT_IDLE),
-        idle_conditional: template.idle_conditional || { enabled: true, title_final: null, title_not_final: null, subtitle_final: null, subtitle_not_final: null, description_final: null, description_not_final: null },
-        idle_offseason: template.idle_offseason || { title_enabled: false, title: null, subtitle_enabled: false, subtitle: null, description_enabled: false, description: null },
-        conditional_descriptions: template.conditional_descriptions || [],
-        event_channel_name: template.event_channel_name,
-        event_channel_logo_url: template.event_channel_logo_url,
-      })
-    }
-  }, [template])
+  // Populate form from the server template during render (React's "adjusting
+  // state when a prop changes" pattern) — re-seeds on every refetch, exactly
+  // like the previous effect, without the extra effect render pass.
+  const [syncedTemplate, setSyncedTemplate] = useState<typeof template>(undefined)
+  if (template && template !== syncedTemplate) {
+    setSyncedTemplate(template)
+    setFormData({
+      name: template.name,
+      template_type: template.template_type,
+      sport: template.sport,
+      league: template.league,
+      title_format: template.title_format || "",
+      subtitle_template: template.subtitle_template,
+      description_template: template.description_template,
+      program_art_url: template.program_art_url,
+      game_duration_mode: template.game_duration_mode || "sport",
+      game_duration_override: template.game_duration_override,
+      xmltv_flags: template.xmltv_flags || { new: true, live: false, date: false },
+      xmltv_video: template.xmltv_video || { enabled: false, quality: "HDTV" },
+      xmltv_categories: template.xmltv_categories || ["Sports"],
+      xmltv_filler_categories: template.xmltv_filler_categories || [],
+      pregame_enabled: template.pregame_enabled ?? true,
+      pregame_fallback: mergeFillerContent(template.pregame_fallback, DEFAULT_PREGAME),
+      postgame_enabled: template.postgame_enabled ?? true,
+      postgame_fallback: mergeFillerContent(template.postgame_fallback, DEFAULT_POSTGAME),
+      postgame_conditional: template.postgame_conditional || { enabled: true, title_final: null, title_not_final: null, subtitle_final: null, subtitle_not_final: null, description_final: null, description_not_final: null },
+      idle_enabled: template.idle_enabled ?? true,
+      idle_content: mergeFillerContent(template.idle_content, DEFAULT_IDLE),
+      idle_conditional: template.idle_conditional || { enabled: true, title_final: null, title_not_final: null, subtitle_final: null, subtitle_not_final: null, description_final: null, description_not_final: null },
+      idle_offseason: template.idle_offseason || { title_enabled: false, title: null, subtitle_enabled: false, subtitle: null, description_enabled: false, description: null },
+      conditional_descriptions: template.conditional_descriptions || [],
+      event_channel_name: template.event_channel_name,
+      event_channel_logo_url: template.event_channel_logo_url,
+    })
+  }
 
   const createMutation = useMutation({
     mutationFn: createTemplate,
@@ -214,9 +249,7 @@ export function TemplateForm() {
 
   if (isEdit && isLoadingTemplate) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <Spinner size="lg" className="py-12" />
     )
   }
 
@@ -355,9 +388,22 @@ export function TemplateForm() {
             onInsert={insertVariable}
             lastFocusedField={lastFocusedField}
             isTeamTemplate={isTeamTemplate}
-            availableSports={availableSports}
-            previewSport={previewSport}
-            onSportChange={setPreviewSport}
+            leagues={previewLeagues}
+            subscribedSlugs={subscribedSlugs}
+            previewLeague={previewLeague}
+            onLeagueChange={setPreviewLeague}
+            liveRequested={liveRequested}
+            isLive={isLivePreview}
+            onToggleLive={() => setLiveRequested((v) => !v)}
+            liveCoverage={
+              isLivePreview && samplesData?.live_total != null
+                ? {
+                    populated: samplesData.live_populated ?? 0,
+                    total: samplesData.live_total,
+                    gaps: samplesData.gaps ?? [],
+                  }
+                : null
+            }
           />
         </div>
       </div>

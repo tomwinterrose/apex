@@ -4,7 +4,7 @@ Handles creation and deletion timing for event channels.
 Channels are created before events and deleted after.
 
 EPG Association Flow:
-1. Generate consistent tvg_id: teamarr-event-{event_id}
+1. Generate consistent tvg_id: vroomarr-event-{event_id}
 2. Create channel in Dispatcharr with this tvg_id
 3. Generate XMLTV with matching channel id
 4. After EPG refresh, look up EPGData by tvg_id
@@ -15,6 +15,9 @@ import logging
 from dataclasses import asdict
 from sqlite3 import Connection
 from typing import Any
+
+from teamarr.dispatcharr import ChannelManager, EPGManager, LogoManager
+from teamarr.dispatcharr.factory import DispatcharrConnection
 
 from .service import ChannelLifecycleService
 from .timing import ChannelLifecycleManager
@@ -168,8 +171,6 @@ def create_lifecycle_service(
     epg_manager = None
 
     if dispatcharr_client and settings.get("enabled"):
-        from teamarr.dispatcharr import ChannelManager, EPGManager, LogoManager
-        from teamarr.dispatcharr.factory import DispatcharrConnection
 
         # Extract raw client if we received a DispatcharrConnection
         raw_client = (

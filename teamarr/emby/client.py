@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Auth header required for all Emby API calls
 _EMBY_AUTH_HEADER = (
-    'MediaBrowser Client="Teamarr", Device="Server",'
+    'MediaBrowser Client="Vroomarr", Device="Server",'
     ' DeviceId="teamarr", Version="1.0"'
 )
 

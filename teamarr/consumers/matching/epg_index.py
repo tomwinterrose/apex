@@ -35,7 +35,7 @@ class EPGProgramIndex:
     Construct via :meth:`build` once per generation run, then call
     :meth:`lookup` to get the programs overlapping a given event window.
 
-    Programs from Teamarr's own generated EPG source ("_Teamarr") are excluded
+    Programs from Teamarr's own generated EPG source ("_Vroomarr") are excluded
     by default so we never match streams against our own output. Programs
     without parseable start/end times are kept in the index but never returned
     by :meth:`lookup` (they cannot be windowed).
@@ -71,7 +71,7 @@ class EPGProgramIndex:
             tvg_id_resolution: Map of stream ``tvg_id`` -> EPG-source ``tvg_id``.
             window_start: Start of the window to index (inclusive-ish).
             window_end: End of the window to index.
-            exclude_teamarr: Drop programs from our own "_Teamarr" EPG source.
+            exclude_teamarr: Drop programs from our own "_Vroomarr" EPG source.
             page_size: Page size passed to the search endpoint.
 
         Returns:

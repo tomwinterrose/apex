@@ -18,6 +18,7 @@ from teamarr.core import Event, Programme, TeamStats
 from teamarr.services.sports_data import SportsDataService
 from teamarr.templates.context import GameContext, Odds, TeamChannelContext, TemplateContext
 from teamarr.templates.resolver import TemplateResolver
+from teamarr.utilities.event_status import is_event_final
 from teamarr.utilities.sports import get_sport_duration
 from teamarr.utilities.time_blocks import create_filler_chunks
 
@@ -100,7 +101,7 @@ class EventFillerGenerator:
         generator = EventFillerGenerator(service)
         programmes = generator.generate(
             event=event,
-            channel_id="teamarr-event-12345",
+            channel_id="vroomarr-event-12345",
             config=EventFillerConfig(),
             options=EventFillerOptions(),
         )
@@ -491,7 +492,6 @@ class EventFillerGenerator:
             refreshed = event
 
         # Use unified final status check
-        from teamarr.utilities.event_status import is_event_final
 
         return is_event_final(refreshed)
 

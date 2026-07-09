@@ -174,7 +174,7 @@ class DispatcharrProgram:
     end_time: str | None = None
     sub_title: str | None = None
     description: str | None = None
-    epg_source: str | None = None  # source name; "_Teamarr" = our own generated EPG
+    epg_source: str | None = None  # source name; "_Vroomarr" = our own generated EPG
     epg_name: str | None = None
     epg_icon_url: str | None = None
     # custom_properties.categories — e.g. ("Sports", "Sports event", "Baseball").

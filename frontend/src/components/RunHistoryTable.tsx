@@ -49,6 +49,15 @@ function formatBytes(bytes: number | undefined | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// Calls-per-channel is the call-volume regression signal (the #254 refetch bug
+// ran ~16/ch; healthy warm runs are ~2, cold-cache runs ~5). Stay calm/muted in
+// the normal band so the column only lights up when something is off.
+function callsPerChannelClass(ratio: number): string {
+  if (ratio >= 12) return "text-red-600 font-medium"
+  if (ratio >= 6) return "text-amber-600"
+  return "text-muted-foreground"
+}
+
 function StatusIcon({ status }: { status: string }) {
   switch (status) {
     case "completed":
@@ -75,6 +84,8 @@ function getFailedReasonLabel(reason: string): string {
     ambiguous_league: "Ambiguous league",
     no_event_found: "No event found",
     no_event_card_match: "No event card match",
+    no_racing_match: "No racing match",
+    no_tennis_match: "No tennis match",
     date_mismatch: "Date mismatch",
     unmatched: "Unmatched",
   }
@@ -147,37 +158,41 @@ export function RunHistoryTable({ runs, onFixStream }: RunHistoryTableProps) {
     staleTime: 5 * 60 * 1000,
   })
 
+  const leagues = leaguesData?.leagues
+  const matchedStreams = matchedData?.streams
+  const failedFailures = failedData?.failures
+
   // League display lookup
   const getLeagueDisplay = useMemo(() => {
     const map = new Map<string, string>()
-    if (leaguesData?.leagues) {
-      for (const league of leaguesData.leagues) {
+    if (leagues) {
+      for (const league of leagues) {
         map.set(league.slug, getLeagueDisplayName(league, true))
       }
     }
     return (code: string | null) => (code ? (map.get(code) ?? code) : "-")
-  }, [leaguesData?.leagues])
+  }, [leagues])
 
   // Group dropdowns
   const matchedGroups = useMemo(() => {
-    if (!matchedData?.streams) return []
+    if (!matchedStreams) return []
     const groups = new Set<string>()
-    for (const s of matchedData.streams) if (s.group_name) groups.add(s.group_name)
+    for (const s of matchedStreams) if (s.group_name) groups.add(s.group_name)
     return Array.from(groups).sort()
-  }, [matchedData?.streams])
+  }, [matchedStreams])
 
   const failedGroups = useMemo(() => {
-    if (!failedData?.failures) return []
+    if (!failedFailures) return []
     const groups = new Set<string>()
-    for (const f of failedData.failures) if (f.group_name) groups.add(f.group_name)
+    for (const f of failedFailures) if (f.group_name) groups.add(f.group_name)
     return Array.from(groups).sort()
-  }, [failedData?.failures])
+  }, [failedFailures])
 
   // Filtered data
   const filteredMatchedStreams = useMemo(() => {
-    if (!matchedData?.streams) return []
+    if (!matchedStreams) return []
     const q = matchedFilter.toLowerCase()
-    return matchedData.streams.filter((s) => {
+    return matchedStreams.filter((s) => {
       if (matchedGroupFilter !== "all" && s.group_name !== matchedGroupFilter) return false
       if (!q) return true
       return (
@@ -188,12 +203,12 @@ export function RunHistoryTable({ runs, onFixStream }: RunHistoryTableProps) {
         s.league?.toLowerCase().includes(q)
       )
     })
-  }, [matchedData?.streams, matchedFilter, matchedGroupFilter])
+  }, [matchedStreams, matchedFilter, matchedGroupFilter])
 
   const filteredFailedMatches = useMemo(() => {
-    if (!failedData?.failures) return []
+    if (!failedFailures) return []
     const q = failedFilter.toLowerCase()
-    return failedData.failures.filter((f) => {
+    return failedFailures.filter((f) => {
       if (failedGroupFilter !== "all" && f.group_name !== failedGroupFilter) return false
       if (!q) return true
       return (
@@ -204,7 +219,7 @@ export function RunHistoryTable({ runs, onFixStream }: RunHistoryTableProps) {
         f.reason.toLowerCase().includes(q)
       )
     })
-  }, [failedData?.failures, failedFilter, failedGroupFilter])
+  }, [failedFailures, failedFilter, failedGroupFilter])
 
   const closeMatchedModal = () => {
     setMatchedModalRunId(null)
@@ -296,6 +311,30 @@ export function RunHistoryTable({ runs, onFixStream }: RunHistoryTableProps) {
       header: "Channels",
       align: "center",
       cell: (run) => <span className="tabular-nums">{run.channels?.active ?? 0}</span>,
+    },
+    {
+      key: "api_calls",
+      header: "API Calls",
+      align: "center",
+      cell: (run) => {
+        const total = run.extra_metrics?.provider_calls_total as number | undefined
+        // Runs before kbbk.2 have no telemetry — show a dash, not a fake 0.
+        if (total == null) return <span className="text-muted-foreground">—</span>
+        const calls = (run.extra_metrics?.provider_calls as Record<string, number>) ?? {}
+        const channels = run.channels?.active ?? 0
+        const ratio = channels > 0 ? total / channels : total
+        const rows = [
+          ...Object.entries(calls).map(([label, value]) => ({ label, value })),
+          { label: "Total", value: total },
+        ]
+        return (
+          <RichTooltip title="Provider calls" rows={rows}>
+            <span className={`cursor-help tabular-nums ${callsPerChannelClass(ratio)}`}>
+              {ratio.toFixed(1)}/ch
+            </span>
+          </RichTooltip>
+        )
+      },
     },
     {
       key: "duration",
