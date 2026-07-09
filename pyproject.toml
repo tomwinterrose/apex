@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vroomarr"
-version = "2.7.0"
+version = "0.2.0"
 description = "Motorsports EPG generator for Dispatcharr"
 readme = "README.md"
 requires-python = ">=3.11"
