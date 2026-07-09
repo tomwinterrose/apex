@@ -953,7 +953,9 @@ INSERT OR REPLACE INTO leagues (league_code, provider, provider_league_id, provi
     -- Motorsports (TSDB) - session schedules grouped from TheSportsDB's flat
     -- per-event-per-session season data (teamarr/providers/tsdb/racing.py).
     ('imsa', 'tsdb', '4488', 'IMSA SportsCar Championship', 'IMSA WeatherTech SportsCar Championship', 'racing', 'https://r2.thesportsdb.com/images/media/league/badge/t3fpd41536244390.png', NULL, 0, 'IMSA', 'imsa', 'event', 'Motor Racing', NULL, NULL, 'premium', 1),
-    ('wec', 'tsdb', '4413', 'WEC', 'FIA World Endurance Championship', 'racing', 'https://r2.thesportsdb.com/images/media/league/badge/2fjrko1705526433.png', NULL, 0, 'WEC', 'wec', 'event', 'Motor Racing', NULL, NULL, 'premium', 1);
+    ('wec', 'tsdb', '4413', 'WEC', 'FIA World Endurance Championship', 'racing', 'https://r2.thesportsdb.com/images/media/league/badge/2fjrko1705526433.png', NULL, 0, 'WEC', 'wec', 'event', 'Motor Racing', NULL, NULL, 'premium', 1),
+    ('f2', 'tsdb', '4486', 'Formula 2', 'FIA Formula 2 Championship', 'racing', 'https://r2.thesportsdb.com/images/media/league/badge/6pfj0e1768918080.png', NULL, 0, 'F2', 'f2', 'event', 'Formula 2 Racing', NULL, NULL, 'premium', 1),
+    ('f3', 'tsdb', '4487', 'Formula 3', 'FIA Formula 3 Championship', 'racing', 'https://r2.thesportsdb.com/images/media/league/badge/lg5c6e1565708517.png', NULL, 0, 'F3', 'f3', 'event', 'Formula 3 Racing', NULL, NULL, 'premium', 1);
 
 -- =============================================================================
 -- STREAM_MATCH_CACHE TABLE

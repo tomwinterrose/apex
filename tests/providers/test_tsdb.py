@@ -86,6 +86,17 @@ IMSA_ROUND = [
     ),
 ]
 
+# F2 (mirrors F3): venue-prefixed session names, unnumbered single Practice,
+# and two race-type sessions per weekend (Sprint Race + Feature Race) —
+# unlike WEC/IMSA where the race name itself is the shared prefix and there's
+# only one race session. Real event names from TheSportsDB (idLeague 4486).
+F2_ROUND = [
+    _event("30", "Bahrain Practice", "2024-02-29", "09:05:00", "1", venue="Bahrain International Circuit", country="Bahrain"),
+    _event("31", "Bahrain Qualifying", "2024-02-29", "13:55:00", "1", venue="Bahrain International Circuit", country="Bahrain"),
+    _event("32", "Bahrain Sprint Race", "2024-03-01", "14:15:00", "1", venue="Bahrain International Circuit", country="Bahrain"),
+    _event("33", "Bahrain Feature Race", "2024-03-02", "10:30:00", "1", venue="Bahrain International Circuit", country="Bahrain"),
+]
+
 
 def test_wec_round_session_codes_and_race_identification():
     events = parse_racing_events(WEC_ROUND, "wec", "racing", "tsdb")
@@ -137,6 +148,25 @@ def test_imsa_round_single_race_session():
     assert len(event.sessions) == 1
     assert event.sessions[0].code == "race"
     assert event.sessions[0].name == "Race"
+
+
+def test_f2_round_venue_prefixed_sessions_with_sprint_and_feature_race():
+    events = parse_racing_events(F2_ROUND, "f2", "racing", "tsdb")
+    assert len(events) == 1
+
+    event = events[0]
+    assert event.id == "tsdb_f2_2026_1"
+    assert event.circuit_name == "Bahrain International Circuit"
+
+    sessions_by_code = {s.code: s for s in event.sessions}
+    assert sessions_by_code["practice"].name == "Practice"
+    assert sessions_by_code["qualifying"].name == "Qualifying"
+    assert sessions_by_code["sprint"].name == "Sprint"
+    assert sessions_by_code["race"].name == "Race"
+
+    # Feature Race (the primary race) is last chronologically and identified
+    # as "the race"; Sprint Race is kept distinct, not folded into "race".
+    assert event.sessions[-1].code == "race"
 
 
 def test_get_events_filters_by_session_date():

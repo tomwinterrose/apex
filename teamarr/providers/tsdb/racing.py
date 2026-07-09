@@ -18,11 +18,18 @@ logger = logging.getLogger(__name__)
 # Keywords that mark a TSDB event as a non-race session (practice,
 # qualifying, etc). The event in a group whose name contains none of these
 # is the race itself.
+#
+# "sprint" is included so weekends with two race-type sessions (F2/F3's
+# Sprint Race + Feature Race) don't have the sprint race mistaken for the
+# primary race — it's classified separately by _SPRINT_RACE_RE below, and
+# the feature race becomes the sole primary/"race" session.
 _SESSION_KEYWORDS_RE = re.compile(
-    r"practice|qualifying|hyperpole|warm|prologue|fp\d|session", re.IGNORECASE
+    r"practice|qualifying|hyperpole|warm|prologue|fp\d|session|sprint", re.IGNORECASE
 )
 
-_FREE_PRACTICE_RE = re.compile(r"^(?:free practice|fp)\s*(\d+)$", re.IGNORECASE)
+# Digit is optional: F2/F3 run a single unnumbered "Practice" session,
+# unlike WEC/IMSA's numbered "Free Practice 1"/"FP1".
+_FREE_PRACTICE_RE = re.compile(r"^(?:free\s*practice|practice|fp)\s*(\d*)$", re.IGNORECASE)
 _WARMUP_RE = re.compile(r"^warm[\s-]?up$", re.IGNORECASE)
 _QUALIFYING_RE = re.compile(
     r"^(?:hyperpole\s+)?qualifying(?:\s*[-–]\s*(.+))?$", re.IGNORECASE
@@ -31,6 +38,10 @@ _HYPERPOLE_RE = re.compile(
     r"^hyperpole\s*(\d*)\s*(?:[-–]\s*(.+))?$", re.IGNORECASE
 )
 _PROLOGUE_RE = re.compile(r"prologue", re.IGNORECASE)
+# Matches only the race itself (e.g. "Bahrain Sprint Race"), not "Sprint
+# Qualifying" — the latter already slugifies to the ESPN-consistent
+# "sprint_qualifying" via the generic fallback below.
+_SPRINT_RACE_RE = re.compile(r"sprint\s*race", re.IGNORECASE)
 
 
 def _slugify(text: str) -> str:
@@ -38,23 +49,51 @@ def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
-def _parse_session_label(event_name: str, race_name: str | None) -> tuple[str, str]:
+def _shared_label_prefix(names: list[str]) -> str:
+    """Longest prefix shared by every session name in a round.
+
+    Race-weekend session names conventionally lead with a shared label that
+    needs stripping before the session-type regexes below can classify the
+    remainder — either the full race name (WEC's "24 Hours of Le Mans Free
+    Practice 1") or just the venue (F2/F3's "Bahrain Practice").
+
+    Skipped (returns "") if the shared prefix itself contains a session
+    keyword, e.g. WEC's "Imola Prologue Morning/Afternoon Session" round,
+    where "Prologue" is shared but must stay intact for classification.
+    """
+    prefix = min(names, key=len)
+    for name in names:
+        while not name.startswith(prefix):
+            prefix = prefix[:-1]
+    if not prefix or _SESSION_KEYWORDS_RE.search(prefix):
+        return ""
+    return prefix
+
+
+def _parse_session_label(
+    event_name: str, race_name: str | None, strip_prefix: str = ""
+) -> tuple[str, str]:
     """Map a TSDB racing event name to a `(session_code, session_name)` pair.
 
     `race_name` is the event name identified as the race itself (if any); an
-    exact match short-circuits to `("race", "Race")`, and is also stripped as
-    a prefix from other event names in the group before classification.
+    exact match short-circuits to `("race", "Race")`. Otherwise `strip_prefix`
+    (see `_shared_label_prefix`), or failing that `race_name`, is stripped as
+    a leading label from `event_name` before classification.
     """
     if race_name and event_name == race_name:
         return "race", "Race"
 
     label = event_name
-    if race_name and event_name.startswith(race_name):
+    if strip_prefix and event_name.startswith(strip_prefix):
+        label = event_name[len(strip_prefix):].strip()
+    elif race_name and event_name.startswith(race_name):
         label = event_name[len(race_name):].strip()
 
     if match := _FREE_PRACTICE_RE.match(label):
         num = match.group(1)
-        return f"fp{num}", f"Practice {num}"
+        if num:
+            return f"fp{num}", f"Practice {num}"
+        return "practice", "Practice"
 
     if _WARMUP_RE.match(label):
         return "warmup", "Warm Up"
@@ -83,6 +122,9 @@ def _parse_session_label(event_name: str, race_name: str | None) -> tuple[str, s
             return "prologue_pm", "Prologue (PM)"
         if "morning" in label.lower():
             return "prologue_am", "Prologue (AM)"
+
+    if _SPRINT_RACE_RE.search(label):
+        return "sprint", "Sprint"
 
     slug = _slugify(label) or "race"
     return slug, label.title()
@@ -191,12 +233,15 @@ def _parse_round_group(
     primary = race_event or ordered[-1]
     race_name = race_event.get("strEvent") if race_event else None
 
+    names = [e.get("strEvent", "") for e in ordered]
+    strip_prefix = _shared_label_prefix(names) if len(names) > 1 else ""
+
     sessions = []
     for event_data in ordered:
         start_time = _event_start_time(event_data)
         if not start_time:
             continue
-        code, name = _parse_session_label(event_data.get("strEvent", ""), race_name)
+        code, name = _parse_session_label(event_data.get("strEvent", ""), race_name, strip_prefix)
         sessions.append(RacingSession(code=code, name=name, start_time=start_time, results=[]))
 
     if not sessions:

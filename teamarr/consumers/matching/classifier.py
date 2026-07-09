@@ -1039,7 +1039,10 @@ def is_event_card(text: str, league_event_type: str | None = None) -> bool:
 # RACING_EVENT path when detect_league_hint() already identified them as
 # motorsports.
 _RACING_LEAGUE_HINTS: frozenset[str] = frozenset(
-    {"f1", "nascar-cup", "nascar-xfinity", "nascar-truck", "indycar", "motogp", "imsa", "wec"}
+    {
+        "f1", "f2", "f3", "nascar-cup", "nascar-xfinity", "nascar-truck",
+        "indycar", "motogp", "imsa", "wec",
+    }
 )
 
 
