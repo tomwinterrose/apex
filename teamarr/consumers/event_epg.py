@@ -15,10 +15,12 @@ Data flow:
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from typing import overload
 
 from teamarr.core import Event, Programme
 from teamarr.database.templates import EventTemplateConfig
 from teamarr.services import SportsDataService
+from teamarr.templates.conditions import get_condition_selector
 from teamarr.templates.context_builder import ContextBuilder
 from teamarr.templates.resolver import TemplateResolver
 from teamarr.utilities.sports import get_sport_duration
@@ -64,6 +66,14 @@ def is_event_postponed(event: Event) -> bool:
     if not event.status:
         return False
     return event.status.state.lower() == "postponed"
+
+
+@overload
+def prepend_postponed_label(text: str, event: Event, enabled: bool) -> str: ...
+
+
+@overload
+def prepend_postponed_label(text: None, event: Event, enabled: bool) -> None: ...
 
 
 def prepend_postponed_label(text: str | None, event: Event, enabled: bool) -> str | None:
@@ -250,7 +260,6 @@ class EventEPGGenerator:
         # Use conditional description selector if conditions are defined
         description = None
         if template.conditional_descriptions:
-            from teamarr.templates.conditions import get_condition_selector
 
             selector = get_condition_selector()
             selected_template = selector.select(

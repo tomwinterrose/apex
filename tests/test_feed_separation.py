@@ -392,7 +392,7 @@ class TestFeedTemplateVarsConstant:
     """FEED_TEMPLATE_VARS is the source of truth for the gating list."""
 
     def test_constant_contents(self):
-        from teamarr.consumers.lifecycle.service import FEED_TEMPLATE_VARS
+        from teamarr.consumers.lifecycle.naming import FEED_TEMPLATE_VARS
 
         # Naming-relevant feed vars only — logo URL and directional booleans
         # are deliberately excluded.
@@ -460,7 +460,6 @@ class TestFindExistingChannelFeedTeam:
                 sync_message TEXT,
                 last_verified_at TIMESTAMP,
                 expires_at TIMESTAMP,
-                external_channel_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -623,7 +622,7 @@ class TestFillerChannelIdMatchesLiveProgramme:
 
         from teamarr.consumers.event_group_processor import EventGroupProcessor
 
-        with patch("teamarr.consumers.event_group_processor.create_default_service"):
+        with patch("teamarr.consumers.event_group_processor.processor.create_default_service"):
             return EventGroupProcessor(db_factory=MagicMock())
 
     def _make_event(self, event_id="401815159", provider="espn"):
@@ -654,8 +653,8 @@ class TestFillerChannelIdMatchesLiveProgramme:
         )
 
     def test_filler_channel_id_includes_feed_team_id(self):
-        """Pre-fix this test fails: filler emits to teamarr-event-401815159
-        while live emits to teamarr-event-401815159-feed-18."""
+        """Pre-fix this test fails: filler emits to vroomarr-event-401815159
+        while live emits to vroomarr-event-401815159-feed-18."""
         from unittest.mock import MagicMock, patch
 
         from teamarr.consumers.filler.event_filler import (
@@ -685,7 +684,7 @@ class TestFillerChannelIdMatchesLiveProgramme:
             captured_channel_ids.append(kwargs.get("channel_id"))
             return EventFillerResult(programmes=[], pregame_count=0, postgame_count=0)
 
-        with patch("teamarr.consumers.event_group_processor.EventFillerGenerator") as MockGen:
+        with patch("teamarr.consumers.event_group_processor.xmltv.EventFillerGenerator") as MockGen:
             MockGen.return_value.generate_with_counts = fake_generate_with_counts
             processor._generate_filler_for_streams(
                 matched_streams=matched_streams,
@@ -693,7 +692,7 @@ class TestFillerChannelIdMatchesLiveProgramme:
                 sport_durations={"baseball": 3.0},
             )
 
-        assert captured_channel_ids == ["teamarr-event-401815159-feed-18"]
+        assert captured_channel_ids == ["vroomarr-event-401815159-feed-18"]
 
     def test_filler_channel_id_no_feed_team(self):
         """Without feed separation (national broadcast), filler still emits
@@ -725,7 +724,7 @@ class TestFillerChannelIdMatchesLiveProgramme:
             captured_channel_ids.append(kwargs.get("channel_id"))
             return EventFillerResult(programmes=[], pregame_count=0, postgame_count=0)
 
-        with patch("teamarr.consumers.event_group_processor.EventFillerGenerator") as MockGen:
+        with patch("teamarr.consumers.event_group_processor.xmltv.EventFillerGenerator") as MockGen:
             MockGen.return_value.generate_with_counts = fake_generate_with_counts
             processor._generate_filler_for_streams(
                 matched_streams=matched_streams,
@@ -733,7 +732,7 @@ class TestFillerChannelIdMatchesLiveProgramme:
                 sport_durations={"baseball": 3.0},
             )
 
-        assert captured_channel_ids == ["teamarr-event-401815158"]
+        assert captured_channel_ids == ["vroomarr-event-401815158"]
 
     def test_filler_channel_id_matches_live_epg_path(self):
         """Cross-caller invariant: the channel_id the filler path computes
@@ -757,4 +756,4 @@ class TestFillerChannelIdMatchesLiveProgramme:
         )
 
         assert filler_channel_id == live_channel_id
-        assert filler_channel_id == "teamarr-event-401815159-feed-18"
+        assert filler_channel_id == "vroomarr-event-401815159-feed-18"

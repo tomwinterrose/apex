@@ -7,7 +7,6 @@ the write path (eqz.2) and the test-fetch validator (eqz.3) will both enforce.
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 
 import pytest
 
@@ -23,6 +22,7 @@ from teamarr.services.custom_leagues import (
     default_event_type,
     delete_custom_league,
     is_supported_sport,
+    list_custom_leagues_with_state,
     require_custom_leagues_enabled,
     run_custom_league_test_fetch,
     supported_custom_league_sports,
@@ -32,8 +32,9 @@ from teamarr.services.custom_leagues import (
     validate_event_type,
     validate_tsdb_sport_matches,
 )
+from tests.helpers import SCHEMA_PATH
 
-SCHEMA = Path(__file__).resolve().parents[1] / "teamarr" / "database" / "schema.sql"
+SCHEMA = SCHEMA_PATH
 
 
 def _db() -> sqlite3.Connection:
@@ -91,6 +92,10 @@ def test_functional_sports_includes_matcher_backed_sports():
         assert is_supported_sport(sport) is True
 
 
+@pytest.mark.skip(
+    reason="Vroomarr's sports table is stripped to racing-only; FUNCTIONAL_SPORTS "
+    "(teamarr's full multi-sport catalog) will never match the seeded set."
+)
 def test_supported_sports_intersects_table_with_functional_set():
     conn = _db()
     sports = supported_custom_league_sports(conn)
@@ -176,10 +181,19 @@ def test_cross_check_rejects_unmapped_sport():
 # ---------------------------------------------------------------------------
 
 
-def test_capability_endpoint_shape():
+@pytest.mark.skip(
+    reason="Vroomarr's sports table is stripped to racing-only; FUNCTIONAL_SPORTS "
+    "(teamarr's full multi-sport catalog) will never match the seeded set."
+)
+def test_capability_endpoint_shape(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
     from teamarr.api.app import app
+    from teamarr.database import init_db
+
+    # Fresh temp DB — the live-app endpoint must not depend on the host's DB.
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    init_db()
 
     resp = TestClient(app).get("/api/v1/leagues/custom/capability")
     assert resp.status_code == 200
@@ -238,6 +252,64 @@ def test_create_persists_custom_row(monkeypatch):
     assert stored["is_custom"] == 1
 
 
+# ---------------------------------------------------------------------------
+# Auto-subscribe + subscription-state warning (#240 UX guard)
+# ---------------------------------------------------------------------------
+
+
+def _sub_leagues(conn):
+    from teamarr.database.subscription import get_subscription
+
+    return get_subscription(conn).leagues
+
+
+def test_create_auto_subscribes_league(monkeypatch):
+    """A new custom league lands in the global subscription so its games match.
+
+    Group match/inclusion leagues resolve from sports_subscription; without this,
+    a freshly-created league silently produces no events (GH #240).
+    """
+    conn = _premium_db()
+    _patch_client(monkeypatch)
+    create_custom_league(conn, **_VALID)
+    assert "swe.1" in _sub_leagues(conn)
+
+
+def test_auto_subscribe_preserves_existing_and_no_duplicates(monkeypatch):
+    from teamarr.database.subscription import update_subscription
+
+    conn = _premium_db()
+    update_subscription(conn, leagues=["eng.1"])
+    _patch_client(monkeypatch)
+    create_custom_league(conn, **_VALID)
+    # Existing subscription preserved, new code appended exactly once.
+    assert _sub_leagues(conn) == ["eng.1", "swe.1"]
+
+
+def test_list_with_state_flags_subscribed(monkeypatch):
+    conn = _premium_db()
+    _patch_client(monkeypatch)
+    create_custom_league(conn, **_VALID)
+
+    rows = list_custom_leagues_with_state(conn)
+    assert len(rows) == 1
+    assert rows[0]["league_code"] == "swe.1"
+    assert rows[0]["subscribed"] is True
+
+
+def test_list_with_state_flags_unsubscribed_after_user_unsubscribes(monkeypatch):
+    """If the user later unchecks the league, the warning flag flips to False."""
+    from teamarr.database.subscription import update_subscription
+
+    conn = _premium_db()
+    _patch_client(monkeypatch)
+    create_custom_league(conn, **_VALID)
+    update_subscription(conn, leagues=[])  # user unsubscribes everything
+
+    rows = list_custom_leagues_with_state(conn)
+    assert rows[0]["subscribed"] is False
+
+
 def test_create_defaults_event_card_for_combat_sport(monkeypatch):
     conn = _premium_db()
 
@@ -256,6 +328,12 @@ def test_create_defaults_event_card_for_combat_sport(monkeypatch):
     assert row["event_type"] == "event_card"
 
 
+@pytest.mark.skip(
+    reason="Vroomarr's only built-in leagues are sport='racing', which is a "
+    "FUNCTIONAL_SPORTS placeholder (no matcher) — sport validation always "
+    "rejects before the collision guard is reached, so this path is unreachable "
+    "with vroomarr's league set."
+)
 def test_create_rejects_collision_with_builtin():
     conn = _premium_db()
     # 'nfl' is a built-in seeded by schema.sql.
@@ -307,14 +385,17 @@ def test_update_only_touches_custom_rows(monkeypatch):
 
 def test_update_rejects_builtin():
     conn = _premium_db()
+    # 'f1' is a built-in seeded by vroomarr's motorsports-only schema.sql.
+    # (update checks the protected-builtin guard before sport validation, so
+    # this doesn't hit the FUNCTIONAL_SPORTS placeholder rejection for racing.)
     with pytest.raises(CustomLeagueProtectedError):
         update_custom_league(
             conn,
-            "nfl",
+            "f1",
             provider_league_id="x",
             provider_league_name="x",
             display_name="x",
-            sport="football",
+            sport="racing",
         )
 
 
@@ -343,10 +424,11 @@ def test_delete_removes_custom_row(monkeypatch):
 
 def test_delete_rejects_builtin():
     conn = _premium_db()
+    # 'f1' is a built-in seeded by vroomarr's motorsports-only schema.sql.
     with pytest.raises(CustomLeagueProtectedError):
-        delete_custom_league(conn, "nfl")
+        delete_custom_league(conn, "f1")
     # Built-in still present.
-    assert conn.execute("SELECT 1 FROM leagues WHERE league_code = 'nfl'").fetchone() is not None
+    assert conn.execute("SELECT 1 FROM leagues WHERE league_code = 'f1'").fetchone() is not None
 
 
 def test_delete_purges_cached_team_and_league_rows(monkeypatch):
@@ -454,9 +536,9 @@ class _FakeTSDBClient:
 
 
 def _patch_client(monkeypatch, cls=_FakeTSDBClient):
-    import teamarr.providers.tsdb as tsdb_pkg
+    import teamarr.services.custom_leagues as custom_leagues_mod
 
-    monkeypatch.setattr(tsdb_pkg, "TSDBClient", cls)
+    monkeypatch.setattr(custom_leagues_mod, "TSDBClient", cls)
 
 
 def test_test_fetch_requires_premium(monkeypatch):
@@ -831,7 +913,7 @@ def test_refresh_custom_league_teams_wrapper_never_raises(monkeypatch):
             raise RuntimeError("kaboom")
 
     monkeypatch.setattr(
-        "teamarr.consumers.cache.refresh.CacheRefresher", lambda *a, **k: _Exploding()
+        "teamarr.services.custom_leagues.CacheRefresher", lambda *a, **k: _Exploding()
     )
     out = svc.refresh_custom_league_teams("swe.1")
     assert out["success"] is False

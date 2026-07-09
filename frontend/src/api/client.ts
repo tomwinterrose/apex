@@ -1,5 +1,5 @@
 /**
- * API client for Teamarr backend.
+ * API client for Vroomarr backend.
  */
 
 const API_BASE = "/api/v1"

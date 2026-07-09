@@ -228,8 +228,8 @@ CREATE TABLE IF NOT EXISTS settings (
     duration_volleyball REAL DEFAULT 2.5,
 
     -- XMLTV
-    xmltv_generator_name TEXT DEFAULT 'Teamarr',
-    xmltv_generator_url TEXT DEFAULT 'https://github.com/Pharaoh-Labs/teamarr',
+    xmltv_generator_name TEXT DEFAULT 'Vroomarr',
+    xmltv_generator_url TEXT DEFAULT 'https://github.com/tomwinterrose/vroomarr',
 
     -- Art base URL: optional prefix for relative art/gamethumb paths in templates.
     -- When set, template art values that are not already absolute (http(s)://)
@@ -352,8 +352,8 @@ CREATE TABLE IF NOT EXISTS settings (
     update_check_enabled BOOLEAN DEFAULT 1,              -- Master toggle for update checking
     update_notify_stable BOOLEAN DEFAULT 1,              -- Notify about stable releases
     update_notify_dev BOOLEAN DEFAULT 1,                 -- Notify about dev builds (if running dev)
-    update_github_owner TEXT DEFAULT 'Pharaoh-Labs',     -- GitHub repo owner (for forks)
-    update_github_repo TEXT DEFAULT 'teamarr',           -- GitHub repo name (for forks)
+    update_github_owner TEXT DEFAULT 'tomwinterrose',     -- GitHub repo owner (for forks)
+    update_github_repo TEXT DEFAULT 'vroomarr',           -- GitHub repo name (for forks)
     update_dev_branch TEXT DEFAULT 'dev',                -- Branch to check for dev builds
     update_auto_detect_branch BOOLEAN DEFAULT 1,         -- Auto-detect branch from version string
 
@@ -388,6 +388,29 @@ CREATE TABLE IF NOT EXISTS settings (
     global_consolidation_mode TEXT DEFAULT 'consolidate'
         CHECK(global_consolidation_mode IN ('consolidate', 'separate')),
 
+    -- Channel Numbering Stability Mode (how existing channel numbers behave across runs)
+    -- 'compact': Re-sort all channels into contiguous priority order every run (legacy default).
+    --            Tidy guide, but a live channel's number can shift when events start/end.
+    -- 'gap':     Sticky + gap-aware. Existing channels keep their number for their whole
+    --            lifecycle; new channels slot into a free number in their sorted neighborhood
+    --            (using channel_gap_size spacing) or append. Deleted slots are reused.
+    -- 'strict':  Sticky + no-drift. Existing channels never move; new channels that would
+    --            displace others are appended to the end of the used range. Gaps are reclaimed
+    --            only at the daily reset.
+    -- For 'gap'/'strict', a full re-layout (the only time existing channels move) runs on the
+    -- first generation at/after channel_daily_reset_time each day, if channel_daily_reset_enabled.
+    channel_stability_mode TEXT DEFAULT 'compact'
+        CHECK(channel_stability_mode IN ('compact', 'gap', 'strict')),
+    channel_gap_size INTEGER DEFAULT 3,                 -- Spacing between channels in 'gap' mode (1 = none)
+    channel_daily_reset_enabled BOOLEAN DEFAULT 1,      -- Run the periodic full re-layout (gap/strict only)
+    channel_daily_reset_time TEXT DEFAULT '04:00',      -- Local HH:MM low-traffic window for the reset
+    last_channel_reset_at TEXT,                          -- Internal: timestamp of last full reset
+    -- Internal: one-shot "re-grid on the next generation" flag. Set by the manual
+    -- "Re-grid now" action and auto-armed when a setting that only takes effect at
+    -- re-layout changes (gap size, stability mode, sort priority). Bypasses the
+    -- daily time gate and reset_enabled; cleared once the re-layout runs.
+    force_channel_relayout_pending BOOLEAN DEFAULT 0,
+
     -- Feed Separation (HOME/AWAY stream detection)
     -- When enabled, detects feed indicators in stream names and creates separate channels per feed
     feed_separation_enabled BOOLEAN DEFAULT 0,          -- Master toggle (off by default)
@@ -421,7 +444,7 @@ CREATE TABLE IF NOT EXISTS settings (
     channelsdvr_lineup_id TEXT,
 
     -- Schema Version
-    schema_version INTEGER DEFAULT 76
+    schema_version INTEGER DEFAULT 78
 );
 
 -- Insert default settings
@@ -536,8 +559,9 @@ CREATE TABLE IF NOT EXISTS event_epg_groups (
     team_filter_mode TEXT DEFAULT 'include'      -- 'include' (whitelist) or 'exclude' (blacklist)
         CHECK(team_filter_mode IN ('include', 'exclude')),
     bypass_filter_for_playoffs BOOLEAN,          -- NULL=use default, 0=disabled, 1=enabled (include all playoff games)
+    name_match_enabled BOOLEAN DEFAULT 1,        -- (ahow) Match streams whose name identifies a specific event (TEAM_VS_TEAM/EVENT_CARD/RACING) — the default matching type. DEFAULT 1 backfills existing sources on upgrade. One of three declared matching types alongside team_streams_enabled (Team) and epg_match_enabled (EPG).
     team_streams_enabled BOOLEAN DEFAULT 0,      -- Allow team-branded streams (e.g. "NHL | Toronto Maple Leafs") to match events
-    epg_match_enabled BOOLEAN DEFAULT 0,         -- (183.6) Use Dispatcharr EPG program data to match static-named linear streams (ESPN, NBA1) and time-window them. Requires global epg_match_enabled + a Dispatcharr build with /api/epg/programs/search/.
+    epg_match_enabled BOOLEAN DEFAULT 0,         -- (183.6) Use Dispatcharr EPG program data to match static-named linear streams (ESPN, NBA1) and time-window them. Requires a Dispatcharr build with /api/epg/programs/search/ (0.24.0+). No global switch — per-source opt-in (3lp1).
     is_channel_source BOOLEAN DEFAULT 0,         -- (183.9) System-managed source group whose candidate streams come from curated Dispatcharr channels (their assigned streams + each channel's own EPG) instead of an M3U group. Auto-created/toggled by settings.epg_channel_source_enabled; hidden from the Event Groups UI.
 
     -- Processing Stats (updated by EPG generation)
@@ -676,6 +700,10 @@ CREATE TABLE IF NOT EXISTS managed_channels (
     tvg_id TEXT NOT NULL,  -- Not UNIQUE: soft-deleted records can share tvg_id with active
     channel_name TEXT NOT NULL,
     channel_number TEXT,
+    -- Stability lock (gap/strict modes only; ignored in compact mode):
+    -- 0 = not yet placed by the stability allocator (newly created, or mode just enabled)
+    -- 1 = number finalized and sticky — never moved except by the daily reset re-layout
+    channel_number_locked INTEGER DEFAULT 0,
     logo_url TEXT,
 
     -- Dispatcharr Integration
@@ -723,7 +751,6 @@ CREATE TABLE IF NOT EXISTS managed_channels (
 
     -- Legacy (for backwards compatibility)
     expires_at TIMESTAMP,
-    external_channel_id INTEGER,             -- Alias for dispatcharr_channel_id
 
     FOREIGN KEY (event_epg_group_id) REFERENCES event_epg_groups(id) ON DELETE SET NULL
     -- Note: No table-level UNIQUE on (event_id, event_provider) - use partial index instead
@@ -764,7 +791,7 @@ CREATE TABLE IF NOT EXISTS sports (
     display_name TEXT NOT NULL               -- Display format: 'Football', 'MMA'
 );
 
--- Seed sports with proper display names
+-- Seed sports with proper display names (motorsports-only: Vroomarr)
 INSERT OR REPLACE INTO sports (sport_code, display_name) VALUES
     ('racing', 'Racing');
 
@@ -907,18 +934,25 @@ CREATE INDEX IF NOT EXISTS idx_leagues_import ON leagues(import_enabled);
 -- =============================================================================
 
 INSERT OR REPLACE INTO leagues (league_code, provider, provider_league_id, provider_league_name, display_name, sport, logo_url, logo_url_dark, import_enabled, league_alias, league_id, event_type, gracenote_category, fallback_provider, fallback_league_id, tsdb_tier, enabled) VALUES
-    -- Motorsports (ESPN)
+    -- Motorsports (ESPN) - Race weekends with multi-driver sessions, no home/away
+    -- 'f1' is the fully-implemented reference league; IndyCar/MotoGP session
+    -- structure needs confirmation in a follow-up.
     ('f1', 'espn', 'racing/f1', NULL, 'Formula 1', 'racing', 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png', NULL, 0, 'F1', 'f1', 'event', 'Formula 1 Racing', NULL, NULL, NULL, 1),
-    ('nascar-cup', 'espn', 'racing/nascar-premier', NULL, 'NASCAR Cup Series', 'racing', 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-NASCAR.png', NULL, 0, 'NASCAR Cup', 'nascar-cup', 'event', 'NASCAR Racing', NULL, NULL, NULL, 1),
-    ('nascar-xfinity', 'espn', 'racing/nascar-secondary', NULL, 'NASCAR Xfinity Series', 'racing', 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-NASCAR.png', NULL, 0, 'NASCAR Xfinity', 'nascar-xfinity', 'event', 'NASCAR Racing', NULL, NULL, NULL, 1),
-    ('nascar-truck', 'espn', 'racing/nascar-truck', NULL, 'NASCAR Craftsman Truck Series', 'racing', 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-NASCAR.png', NULL, 0, 'NASCAR Trucks', 'nascar-truck', 'event', 'NASCAR Racing', NULL, NULL, NULL, 1),
+
+    -- Motorsports (NASCAR API) - authoritative session schedules from cf.nascar.com.
+    -- provider_league_id encodes the NASCAR series number (1=Cup, 2=ORAP, 3=Trucks).
+    -- The NASCAR provider uses hardcoded URL patterns; this field is for reference only.
+    ('nascar-cup',      'nascar', '1', NULL, 'NASCAR Cup Series',                    'racing', 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-NASCAR.png', NULL, 0, 'NASCAR Cup',   'nascar-cup',      'event', 'NASCAR Racing', NULL, NULL, NULL, 1),
+    ('nascar-xfinity',  'nascar', '2', NULL, 'NASCAR O''Reilly Auto Parts Series',   'racing', 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-NASCAR.png', NULL, 0, 'NASCAR ORAP',  'nascar-xfinity',  'event', 'NASCAR Racing', NULL, NULL, NULL, 1),
+    ('nascar-truck',    'nascar', '3', NULL, 'NASCAR Craftsman Truck Series',         'racing', 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-NASCAR.png', NULL, 0, 'NASCAR Trucks','nascar-truck',    'event', 'NASCAR Racing', NULL, NULL, NULL, 1),
     ('indycar', 'espn', 'racing/irl', NULL, 'IndyCar Series', 'racing', 'https://a.espncdn.com/combiner/i?img=/i/espn/teamlogos/500/indycar_series.png', NULL, 0, 'IndyCar', 'indycar', 'event', 'IndyCar Racing', NULL, NULL, NULL, 1),
     -- Disabled: ESPN's racing/motogp scoreboard endpoint returns HTTP 400 (no usable schedule/logo data).
     -- Re-enable once migrated to TSDB (idLeague 4407) - planned v2 feature alongside IMSA/WEC session grouping.
     ('motogp', 'espn', 'racing/motogp', NULL, 'MotoGP', 'racing', 'https://a.espncdn.com/i/teamlogos/leagues/500/motogp.png', NULL, 0, 'MotoGP', 'motogp', 'event', 'Motorcycle Racing', NULL, NULL, NULL, 0),
 
-    -- Motorsports (TSDB)
-    ('imsa', 'tsdb', '4488', 'IMSA SportsCar Championship', 'IMSA WeatherTech SportsCar Championship', 'racing', 'https://r2.thesportsdb.com/images/media/league/badge/t3fpd41536244390.png', NULL, 0, 'IMSA', 'imsa', 'event', 'Motor Racing', NULL, NULL, 'free', 1),
+    -- Motorsports (TSDB) - session schedules grouped from TheSportsDB's flat
+    -- per-event-per-session season data (teamarr/providers/tsdb/racing.py).
+    ('imsa', 'tsdb', '4488', 'IMSA SportsCar Championship', 'IMSA WeatherTech SportsCar Championship', 'racing', 'https://r2.thesportsdb.com/images/media/league/badge/t3fpd41536244390.png', NULL, 0, 'IMSA', 'imsa', 'event', 'Motor Racing', NULL, NULL, 'premium', 1),
     ('wec', 'tsdb', '4413', 'WEC', 'FIA World Endurance Championship', 'racing', 'https://r2.thesportsdb.com/images/media/league/badge/2fjrko1705526433.png', NULL, 0, 'WEC', 'wec', 'event', 'Motor Racing', NULL, NULL, 'premium', 1);
 
 -- =============================================================================
@@ -959,8 +993,10 @@ CREATE TABLE IF NOT EXISTS stream_match_cache (
     -- fuzzy: matched via fuzzy string matching
     -- keyword: matched via keyword (UFC, boxing event cards)
     -- no_match: failed to match (short TTL)
+    -- direct: unambiguous non-fuzzy match (racing single-event, tennis surname pair)
+    -- epg: matched via EPG program title (epic 183)
     match_method TEXT DEFAULT 'fuzzy'
-        CHECK(match_method IN ('cache', 'user_corrected', 'alias', 'pattern', 'fuzzy', 'keyword', 'no_match')),
+        CHECK(match_method IN ('cache', 'user_corrected', 'alias', 'pattern', 'fuzzy', 'keyword', 'no_match', 'direct', 'epg')),
 
     -- User correction tracking
     user_corrected BOOLEAN DEFAULT 0,
@@ -1194,6 +1230,10 @@ CREATE TABLE IF NOT EXISTS managed_channel_streams (
     -- (derived from the matched EPG program slot +/- the global stream buffers).
     attach_at TIMESTAMP,
     detach_at TIMESTAMP,
+
+    -- Stream stats cached from Dispatcharr (stream_stats JSON on the Stream object)
+    stream_stats JSON DEFAULT NULL,
+    stream_stats_updated_at TIMESTAMP DEFAULT NULL,
 
     -- Sync status
     last_verified_at TIMESTAMP,
@@ -1468,6 +1508,35 @@ CREATE INDEX IF NOT EXISTS idx_processing_runs_group ON processing_runs(group_id
 CREATE INDEX IF NOT EXISTS idx_processing_runs_status ON processing_runs(status);
 -- Composite index for filtering by type and ordering by date
 CREATE INDEX IF NOT EXISTS idx_processing_runs_type_created ON processing_runs(run_type, created_at DESC);
+
+
+-- =============================================================================
+-- LIFETIME_STATS TABLE
+-- Singleton accumulator for all-time full-EPG generation totals.
+-- processing_runs is pruned to a rolling window (cleanup_old_runs) and can be
+-- cleared from the UI, so lifetime totals cannot be derived from it. Instead,
+-- cleanup_old_runs/clear_all_runs fold the sums of full_epg rows into this row
+-- BEFORE deleting them; get_current_stats reports lifetime + live.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS lifetime_stats (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    runs INTEGER DEFAULT 0,
+    successful_runs INTEGER DEFAULT 0,
+    failed_runs INTEGER DEFAULT 0,
+    streams_matched INTEGER DEFAULT 0,
+    streams_unmatched INTEGER DEFAULT 0,
+    streams_cached INTEGER DEFAULT 0,
+    channels_created INTEGER DEFAULT 0,
+    channels_deleted INTEGER DEFAULT 0,
+    programmes_total INTEGER DEFAULT 0,
+    programmes_events INTEGER DEFAULT 0,
+    programmes_pregame INTEGER DEFAULT 0,
+    programmes_postgame INTEGER DEFAULT 0,
+    programmes_idle INTEGER DEFAULT 0
+);
+
+INSERT OR IGNORE INTO lifetime_stats (id) VALUES (1);
 
 
 -- =============================================================================

@@ -109,7 +109,7 @@ export function XmltvTab({ formData, setFormData }: TabProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           <Alert variant="warning" className="text-xs">
-            <strong>Note:</strong> Teamarr does not detect actual stream resolution. This setting will apply to <strong>all</strong> channels using this template, regardless of their actual quality.
+            <strong>Note:</strong> Vroomarr does not detect actual stream resolution. This setting will apply to <strong>all</strong> channels using this template, regardless of their actual quality.
           </Alert>
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox

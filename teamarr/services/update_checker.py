@@ -59,8 +59,8 @@ class UpdateChecker:
     def __init__(
         self,
         current_version: str,
-        owner: str = "Pharaoh-Labs",
-        repo: str = "teamarr",
+        owner: str = "tomwinterrose",
+        repo: str = "vroomarr",
         dev_branch: str = "dev",
     ):
         """Initialize update checker.
@@ -273,8 +273,8 @@ class UpdateChecker:
 
 def create_update_checker(
     version: str,
-    owner: str = "Pharaoh-Labs",
-    repo: str = "teamarr",
+    owner: str = "tomwinterrose",
+    repo: str = "vroomarr",
     dev_branch: str = "dev",
     auto_detect_branch: bool = True,
 ) -> UpdateChecker:

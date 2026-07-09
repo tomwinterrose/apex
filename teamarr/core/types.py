@@ -125,6 +125,18 @@ class Event:
     # Betting odds (from scoreboard API, usually same-day only)
     odds_data: dict | None = None
 
+    # Editorial/context copy from the provider — EPG-friendly form, dateline dash
+    # stripped (empty when absent). All three come free from the scoreboard
+    # payload — no per-event call. See
+    # docs/reference/architecture/gracenote-template-design.md.
+    game_recap: str = ""  # scoreboard headlines[type=Recap].shortLinkText (clean headline)
+    game_event_note: str = ""  # notes[0].headline, e.g. "NBA Finals - Game 5"
+    soccer_match_note: str = ""  # altGameNote, e.g. "FIFA World Cup, Group J"
+    # Per-event tier — from the summary endpoint (overlaid by refresh_event_status,
+    # which already fetches it, so zero extra calls).
+    game_preview: str = ""  # summary article[type=Preview].description (pregame)
+    series_summary: str = ""  # summary seasonseries[0].summary, e.g. "Series tied 1-1"
+
     # MMA-specific: when main card begins (prelims start at start_time)
     main_card_start: datetime | None = None
 
@@ -152,6 +164,22 @@ class Event:
     # Racing-specific: all sessions for the race weekend (Practice,
     # Qualifying, Race, etc.), ordered by start_time
     sessions: list["RacingSession"] = field(default_factory=list)
+
+    # Racing-specific: scheduled lap count and distance (miles)
+    race_laps: int | None = None
+    race_distance_miles: float | None = None
+
+    # Racing-specific: per-stage lap counts [stage1, stage2, stage3, ...]
+    # Cumulative stage end laps: cumsum(stage_laps)
+    stage_laps: list[int] = field(default_factory=list)
+
+    # Tennis-specific: one Event per match; players ride home_team/away_team.
+    # The tournament is context, not the event (ESPN: 1 scoreboard event =
+    # 1 tournament, matches under groupings[].competitions[]).
+    tournament_name: str | None = None  # e.g., "Wimbledon"
+    round_name: str | None = None  # e.g., "Round 4", "Qualifying 1st Round"
+    court: str | None = None  # e.g., "Centre Court", "No. 1 Court"
+    draw_type: str | None = None  # e.g., "Men's Singles", "Mixed Doubles"
 
 
 @dataclass(frozen=True)

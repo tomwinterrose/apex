@@ -113,11 +113,11 @@ class ChannelManager:
             name="Giants @ Cowboys",
             channel_number=5001,
             stream_ids=[456],
-            tvg_id="teamarr-event-12345"
+            tvg_id="vroomarr-event-12345"
         )
 
         # Find by tvg_id (O(1) from cache)
-        channel = manager.find_by_tvg_id("teamarr-event-12345")
+        channel = manager.find_by_tvg_id("vroomarr-event-12345")
     """
 
     # Class-level caches shared across instances (keyed by base URL)
@@ -208,6 +208,43 @@ class ChannelManager:
                     self._cache.update(channel)
                 return channel
             return None
+
+    def get_channel_existence(
+        self,
+        channel_id: int,
+        use_cache: bool = True,
+    ) -> tuple[DispatcharrChannel | None, bool]:
+        """Fetch a channel, distinguishing "confirmed gone" from "couldn't verify".
+
+        ``get_channel`` collapses a real 404 and a transient failure (timeout,
+        5xx, auth/network error) into the same ``None`` return. Callers that take
+        a *destructive* action on a missing channel (soft-delete + recreate, or
+        flag as orphan) must not act on a transient blip — doing so abandons the
+        live Dispatcharr channel and recreates a duplicate, which in gap/strict
+        numbering modes appears far away in the range (see lifecycle
+        ``_handle_existing_channel`` and reconciliation orphan detection).
+
+        Returns ``(channel, confirmed_absent)``:
+          - ``(channel, False)`` — exists (cache hit or HTTP 200).
+          - ``(None, True)``    — Dispatcharr returned HTTP 404; really gone.
+          - ``(None, False)``   — inconclusive (no response, 5xx, network/auth
+            error). Treat the channel as still present and re-verify next run.
+        """
+        with self._lock:
+            if use_cache:
+                self._ensure_cache()
+                cached = self._cache.get_by_id(channel_id)
+                if cached:
+                    return cached, False
+
+            response = self._client.get(f"/api/channels/channels/{channel_id}/")
+            if response is not None and response.status_code == 200:
+                channel = DispatcharrChannel.from_api(response.json())
+                if use_cache:
+                    self._cache.update(channel)
+                return channel, False
+            confirmed_absent = response is not None and response.status_code == 404
+            return None, confirmed_absent
 
     def create_channel(
         self,
@@ -681,7 +718,7 @@ class ChannelManager:
             Dict mapping tvg_id to EPGData dict
         """
         epg_data_list = self.get_epg_data_list(epg_source_id)
-        return {e.get("tvg_id"): e for e in epg_data_list if e.get("tvg_id")}
+        return {tvg_id: e for e in epg_data_list if (tvg_id := e.get("tvg_id"))}
 
     def find_epg_data_by_tvg_id(
         self,
@@ -692,7 +729,7 @@ class ChannelManager:
         """Find EPGData by tvg_id.
 
         Args:
-            tvg_id: The tvg_id to search for (e.g., "teamarr-event-401547679")
+            tvg_id: The tvg_id to search for (e.g., "vroomarr-event-401547679")
             epg_source_id: Optional EPG source ID to filter by
             epg_lookup: Optional pre-built lookup dict for batch operations
 

@@ -16,6 +16,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from teamarr.database.connection import resolve_db_path
+from teamarr.database.settings import get_backup_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,8 +62,8 @@ class BackupService:
     Protected backups have a .protected marker file alongside them.
 
     Naming convention:
-    - Scheduled: teamarr_scheduled_YYYYMMDD_HHMMSS.db
-    - Manual: teamarr_manual_YYYYMMDD_HHMMSS.db
+    - Scheduled: vroomarr_scheduled_YYYYMMDD_HHMMSS.db
+    - Manual: vroomarr_manual_YYYYMMDD_HHMMSS.db
     """
 
     def __init__(
@@ -83,9 +86,8 @@ class BackupService:
 
     def _get_db_path(self) -> Path:
         """Get the current database file path."""
-        from teamarr.database.connection import DEFAULT_DB_PATH
 
-        return DEFAULT_DB_PATH
+        return resolve_db_path(None)
 
     def _generate_filename(self, backup_type: str) -> str:
         """Generate backup filename with timestamp.
@@ -94,10 +96,10 @@ class BackupService:
             backup_type: 'scheduled' or 'manual'
 
         Returns:
-            Filename like 'teamarr_manual_20240115_143052.db'
+            Filename like 'vroomarr_manual_20240115_143052.db'
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return f"teamarr_{backup_type}_{timestamp}.db"
+        return f"vroomarr_{backup_type}_{timestamp}.db"
 
     def _get_protected_marker_path(self, backup_path: Path) -> Path:
         """Get path to protection marker file.
@@ -134,8 +136,8 @@ class BackupService:
             return None
 
         try:
-            # teamarr_TYPE_YYYYMMDD_HHMMSS.db
-            parts = filename[8:-3].split("_")  # Remove 'teamarr_' and '.db'
+            # vroomarr_TYPE_YYYYMMDD_HHMMSS.db
+            parts = filename[len("vroomarr_") : -3].split("_")  # Remove 'vroomarr_' and '.db'
             if len(parts) < 3:
                 return None
 
@@ -219,7 +221,7 @@ class BackupService:
         self._ensure_backup_dir()
 
         backups = []
-        for file_path in self._backup_path.glob("teamarr_*.db"):
+        for file_path in self._backup_path.glob("vroomarr_*.db"):
             parsed = self._parse_backup_filename(file_path.name)
             if not parsed:
                 continue
@@ -410,7 +412,7 @@ class BackupService:
         if db_path.exists():
             self._ensure_backup_dir()
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            pre_restore_path = self._backup_path / f"teamarr_pre_restore_{timestamp}.db"
+            pre_restore_path = self._backup_path / f"vroomarr_pre_restore_{timestamp}.db"
             src = sqlite3.connect(str(db_path))
             dst = sqlite3.connect(str(pre_restore_path))
             try:
@@ -466,7 +468,6 @@ def create_backup_service(
     """
     if backup_path is None:
         # Get path from settings
-        from teamarr.database.settings import get_backup_settings
 
         with db_factory() as conn:
             settings = get_backup_settings(conn)

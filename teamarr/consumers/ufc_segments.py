@@ -26,6 +26,7 @@ from teamarr.consumers.matching.classifier import (
 )
 from teamarr.consumers.matching.normalizer import TZ_ABBREVIATION_MAP
 from teamarr.core.types import Event
+from teamarr.utilities.tz import get_user_timezone
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +271,6 @@ def determine_segment_from_time(
     Returns:
         Segment code or None if can't determine
     """
-    from teamarr.utilities.tz import get_user_timezone
 
     if not event.segment_times:
         return None
@@ -365,7 +365,6 @@ def disambiguate_prelims_by_time(
     Returns:
         Disambiguated segment code
     """
-    from teamarr.utilities.tz import get_user_timezone
 
     # Only disambiguate "prelims" - other segments are unambiguous
     if detected_segment != "prelims":
@@ -557,6 +556,9 @@ def expand_ufc_segments(
             result.append(match)
             continue
 
+        # is_ufc_event returned True, so event is a non-None UFC Event.
+        assert event is not None
+
         # Check for excluded streams (weigh-ins, etc.)
         if should_exclude_stream(stream):
             logger.debug(
@@ -618,6 +620,8 @@ def expand_ufc_segments(
         # Get the event from any stream (they all have the same event)
         first_match = next(iter(next(iter(segments.values()))))
         event = first_match.get("event")
+        # Every match grouped into ufc_by_segment carries its UFC Event.
+        assert event is not None
 
         # Create entry for each discovered segment
         for segment in SEGMENT_ORDER:

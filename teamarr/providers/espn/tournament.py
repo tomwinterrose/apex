@@ -6,8 +6,12 @@ traditional home/away matchups.
 
 import logging
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from teamarr.core import Event, EventStatus, RacingResult, RacingSession, Team, Venue
+
+if TYPE_CHECKING:
+    from teamarr.providers.espn.client import ESPNClient
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +60,15 @@ class TournamentParserMixin:
         - self.name: Provider name ('espn')
     """
 
+    if TYPE_CHECKING:
+        # Provided by the host provider class (ESPNProvider).
+        _client: "ESPNClient"
+        name: str
+
+        def _parse_tennis_matches(
+            self, data: dict, league: str, sport: str, target_date: date
+        ) -> list[Event]: ...
+
     def _get_tournament_events(
         self,
         league: str,
@@ -77,6 +90,13 @@ class TournamentParserMixin:
         for event_data in data.get("events", []):
             if sport == "racing":
                 event = self._parse_racing_event(event_data, league, sport)
+            elif sport == "tennis":
+                # Tennis expands to one Event per match (TennisParserMixin),
+                # not one placeholder Event per tournament
+                events.extend(
+                    self._parse_tennis_matches(event_data, league, sport, target_date)
+                )
+                continue
             else:
                 event = self._parse_tournament_event(event_data, league, sport)
             if event:

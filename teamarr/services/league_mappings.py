@@ -8,11 +8,13 @@ This is critical for thread-safety during parallel team processing.
 """
 
 import logging
-from collections.abc import Callable, Generator
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from sqlite3 import Connection
 
 from teamarr.core import LeagueMapping
 from teamarr.core.sports import get_sport_display_names_from_db
+from teamarr.providers import ProviderRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,7 @@ class LeagueMappingService:
 
     def __init__(
         self,
-        db_getter: Callable[[], Generator[Connection, None, None]],
+        db_getter: Callable[[], AbstractContextManager[Connection]],
     ):
         self._db_getter = db_getter
         # Cache all mappings at initialization for thread-safety
@@ -413,7 +415,6 @@ class LeagueMappingService:
             return None
 
         # Check if primary provider has premium/full capabilities
-        from teamarr.providers import ProviderRegistry
 
         if not ProviderRegistry.is_provider_premium(mapping.provider):
             # Primary provider is limited, check for fallback
@@ -502,7 +503,7 @@ _league_mapping_service: LeagueMappingService | None = None
 
 
 def init_league_mapping_service(
-    db_getter: Callable[[], Generator[Connection, None, None]],
+    db_getter: Callable[[], AbstractContextManager[Connection]],
 ) -> LeagueMappingService:
     """Initialize the global league mapping service.
 

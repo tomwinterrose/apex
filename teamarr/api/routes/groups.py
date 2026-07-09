@@ -12,7 +12,38 @@ from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from teamarr.consumers.stream_match_cache import (
+    StreamMatchCache,
+    clear_all_match_data,
+    clear_group_match_data,
+)
 from teamarr.database import get_db
+from teamarr.database.groups import (
+    delete_group,
+    delete_group_xmltv,
+    get_all_group_stats,
+    get_all_group_xmltv,
+    get_all_groups,
+    get_group,
+    get_group_by_name,
+    get_group_channel_count,
+    get_group_xmltv_with_metadata,
+    get_stale_groups,
+    reorder_groups,
+    set_group_enabled,
+    update_group,
+)
+from teamarr.database.settings import get_display_settings
+from teamarr.dispatcharr import get_dispatcharr_connection, get_factory
+from teamarr.services import create_group_service
+from teamarr.services.stream_filter import (
+    UNSUPPORTED_SPORTS,
+    detect_sport_hint,
+    is_event_stream,
+    is_placeholder,
+)
+from teamarr.utilities.sorting import natural_sort_key
+from teamarr.utilities.xmltv import merge_xmltv_content
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +121,7 @@ class GroupCreate(BaseModel):
     custom_regex_event_name: str | None = None
     custom_regex_event_name_enabled: bool = False
     skip_builtin_filter: bool = False
+    name_match_enabled: bool = True
     team_streams_enabled: bool = False
     epg_match_enabled: bool = False
     # Team filtering (canonical team selection)
@@ -146,6 +178,7 @@ class GroupUpdate(BaseModel):
     custom_regex_event_name: str | None = None
     custom_regex_event_name_enabled: bool | None = None
     skip_builtin_filter: bool | None = None
+    name_match_enabled: bool | None = None
     team_streams_enabled: bool | None = None
     epg_match_enabled: bool | None = None
     # Team filtering (canonical team selection)
@@ -230,6 +263,7 @@ class GroupResponse(BaseModel):
     custom_regex_event_name: str | None = None
     custom_regex_event_name_enabled: bool = False
     skip_builtin_filter: bool = False
+    name_match_enabled: bool = True
     team_streams_enabled: bool = False
     epg_match_enabled: bool = False
     # Team filtering (canonical team selection, inherited by children)
@@ -320,6 +354,7 @@ class BulkGroupSettings(BaseModel):
     channel_sort_order: str = "time"
     overlap_handling: str = "add_stream"
     enabled: bool = True
+    name_match_enabled: bool = True
     team_streams_enabled: bool = False
     epg_match_enabled: bool = False
 
@@ -369,6 +404,7 @@ class BulkGroupUpdateRequest(BaseModel):
     channel_sort_order: str | None = None
     overlap_handling: str | None = None
     enabled: bool | None = None
+    name_match_enabled: bool | None = None
     team_streams_enabled: bool | None = None
     epg_match_enabled: bool | None = None
 
@@ -467,6 +503,27 @@ VALID_CHANNEL_SORT_ORDER = {"time", "sport_time", "league_time"}
 VALID_OVERLAP_HANDLING = {"add_stream", "add_only", "create_all", "skip"}
 
 
+def _effective_flag(patch: bool | None, current: bool) -> bool:
+    """Resolve a partial-update boolean: the patch value if given, else current."""
+    return current if patch is None else patch
+
+
+def require_matching_type(name: bool, team: bool, epg: bool) -> None:
+    """Reject a source with no matching type enabled (epic ahow).
+
+    Every source must run at least one of Stream Name / Team / EPG matching,
+    otherwise it would process streams and match nothing.
+    """
+    if not (name or team or epg):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "At least one matching type must be enabled "
+                "(Stream Name, Team, or EPG)."
+            ),
+        )
+
+
 def validate_group_fields(
     duplicate_event_handling: str | None = None,
     channel_assignment_mode: str | None = None,
@@ -507,8 +564,6 @@ def list_groups(
     include_stats: bool = Query(False, description="Include channel counts"),
 ):
     """List all event EPG groups."""
-    from teamarr.database.groups import get_all_group_stats, get_all_groups
-    from teamarr.dispatcharr import get_dispatcharr_connection
 
     with get_db() as conn:
         # Hide the system-managed channel-source group (183.9) — it is controlled
@@ -580,6 +635,7 @@ def list_groups(
                 custom_regex_event_name=g.custom_regex_event_name,
                 custom_regex_event_name_enabled=g.custom_regex_event_name_enabled,
                 skip_builtin_filter=g.skip_builtin_filter,
+                name_match_enabled=g.name_match_enabled,
                 team_streams_enabled=g.team_streams_enabled,
                 epg_match_enabled=g.epg_match_enabled,
                 include_teams=[TeamFilterEntry(**t) for t in g.include_teams]
@@ -631,6 +687,12 @@ def create_group(request: GroupCreate):
         create_group,
         get_group,
         get_group_by_name,
+    )
+
+    require_matching_type(
+        request.name_match_enabled,
+        request.team_streams_enabled,
+        request.epg_match_enabled,
     )
 
     # Deprecated per-group channel fields accepted but ignored (v59)
@@ -685,6 +747,7 @@ def create_group(request: GroupCreate):
             custom_regex_event_name=request.custom_regex_event_name,
             custom_regex_event_name_enabled=request.custom_regex_event_name_enabled,
             skip_builtin_filter=request.skip_builtin_filter,
+            name_match_enabled=request.name_match_enabled,
             team_streams_enabled=request.team_streams_enabled,
             epg_match_enabled=request.epg_match_enabled,
             include_teams=[t.model_dump() for t in request.include_teams]
@@ -707,6 +770,11 @@ def create_group(request: GroupCreate):
         )
 
         group = get_group(conn, group_id)
+        if group is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Group {group_id} could not be loaded after creation",
+            )
 
     logger.info("[CREATED] Event group id=%d name=%s", group_id, request.name)
 
@@ -750,6 +818,7 @@ def create_group(request: GroupCreate):
         custom_regex_event_name=group.custom_regex_event_name,
         custom_regex_event_name_enabled=group.custom_regex_event_name_enabled,
         skip_builtin_filter=group.skip_builtin_filter,
+        name_match_enabled=group.name_match_enabled,
         team_streams_enabled=group.team_streams_enabled,
         epg_match_enabled=group.epg_match_enabled,
         include_teams=[TeamFilterEntry(**t) for t in group.include_teams]
@@ -803,6 +872,11 @@ def create_groups_bulk(request: BulkGroupCreateRequest):
         channel_sort_order=request.settings.channel_sort_order,
         overlap_handling=request.settings.overlap_handling,
     )
+    require_matching_type(
+        request.settings.name_match_enabled,
+        request.settings.team_streams_enabled,
+        request.settings.epg_match_enabled,
+    )
 
     results: list[BulkGroupCreateResult] = []
     total_created = 0
@@ -845,6 +919,7 @@ def create_groups_bulk(request: BulkGroupCreateRequest):
                     m3u_account_id=item.m3u_account_id,
                     m3u_account_name=item.m3u_account_name,
                     enabled=request.settings.enabled,
+                    name_match_enabled=request.settings.name_match_enabled,
                     team_streams_enabled=request.settings.team_streams_enabled,
                     epg_match_enabled=request.settings.epg_match_enabled,
                 )
@@ -889,7 +964,6 @@ def update_groups_bulk(request: BulkGroupUpdateRequest):
     Only provided (non-None) fields will be updated across all selected groups.
     Use clear_* flags to explicitly set fields to NULL.
     """
-    from teamarr.database.groups import get_group, update_group
 
     # Validate fields
     validate_group_fields(
@@ -918,6 +992,26 @@ def update_groups_bulk(request: BulkGroupUpdateRequest):
                     total_failed += 1
                     continue
 
+                # Reject (per-group) if the update would leave no matching type.
+                if not (
+                    _effective_flag(request.name_match_enabled, group.name_match_enabled)
+                    or _effective_flag(request.team_streams_enabled, group.team_streams_enabled)
+                    or _effective_flag(request.epg_match_enabled, group.epg_match_enabled)
+                ):
+                    results.append(
+                        BulkGroupUpdateResult(
+                            group_id=group_id,
+                            name=group.name,
+                            success=False,
+                            error=(
+                                "At least one matching type must be enabled "
+                                "(Stream Name, Team, or EPG)."
+                            ),
+                        )
+                    )
+                    total_failed += 1
+                    continue
+
                 # Update the group with provided fields
                 update_group(
                     conn,
@@ -932,6 +1026,7 @@ def update_groups_bulk(request: BulkGroupUpdateRequest):
                     channel_sort_order=request.channel_sort_order,
                     overlap_handling=request.overlap_handling,
                     enabled=request.enabled,
+                    name_match_enabled=request.name_match_enabled,
                     team_streams_enabled=request.team_streams_enabled,
                     epg_match_enabled=request.epg_match_enabled,
                     clear_stream_timezone=request.clear_stream_timezone,
@@ -996,7 +1091,6 @@ def update_groups_bulk(request: BulkGroupUpdateRequest):
 @router.post("/reorder", response_model=ReorderGroupsResponse)
 def reorder_groups_endpoint(request: ReorderGroupsRequest):
     """Reorder event groups by updating sort_order values."""
-    from teamarr.database.groups import reorder_groups
 
     if not request.groups:
         raise HTTPException(
@@ -1024,7 +1118,6 @@ class MatchCacheStatsResponse(BaseModel):
 @router.get("/cache/stats", response_model=MatchCacheStatsResponse)
 def get_match_cache_stats():
     """Get stream match cache statistics."""
-    from teamarr.consumers.stream_match_cache import StreamMatchCache
 
     cache = StreamMatchCache(get_db)
     return MatchCacheStatsResponse(total_entries=cache.get_size())
@@ -1037,7 +1130,6 @@ def list_stale_groups() -> list[dict]:
     Populated by the post-generation stale-source detection (lylt.1). Delete a
     stale group via the standard DELETE /groups/{id} endpoint.
     """
-    from teamarr.database.groups import get_stale_groups
 
     with get_db() as conn:
         return get_stale_groups(conn)
@@ -1046,8 +1138,6 @@ def list_stale_groups() -> list[dict]:
 @router.get("/{group_id}", response_model=GroupResponse)
 def get_group_by_id(group_id: int):
     """Get a single event EPG group."""
-    from teamarr.database.groups import get_group, get_group_channel_count
-    from teamarr.dispatcharr import get_dispatcharr_connection
 
     with get_db() as conn:
         group = get_group(conn, group_id)
@@ -1113,6 +1203,7 @@ def get_group_by_id(group_id: int):
         custom_regex_event_name=group.custom_regex_event_name,
         custom_regex_event_name_enabled=group.custom_regex_event_name_enabled,
         skip_builtin_filter=group.skip_builtin_filter,
+        name_match_enabled=group.name_match_enabled,
         team_streams_enabled=group.team_streams_enabled,
         epg_match_enabled=group.epg_match_enabled,
         include_teams=[TeamFilterEntry(**t) for t in group.include_teams]
@@ -1155,12 +1246,6 @@ def get_group_by_id(group_id: int):
 @router.put("/{group_id}", response_model=GroupResponse)
 def update_group_by_id(group_id: int, request: GroupUpdate):
     """Update an event EPG group."""
-    from teamarr.database.groups import (
-        get_group,
-        get_group_by_name,
-        get_group_channel_count,
-        update_group,
-    )
 
     # Deprecated per-group channel fields accepted but ignored (v59)
 
@@ -1171,6 +1256,13 @@ def update_group_by_id(group_id: int, request: GroupUpdate):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Group {group_id} not found",
             )
+
+        # Validate the post-update matching types (patch overrides current value).
+        require_matching_type(
+            _effective_flag(request.name_match_enabled, group.name_match_enabled),
+            _effective_flag(request.team_streams_enabled, group.team_streams_enabled),
+            _effective_flag(request.epg_match_enabled, group.epg_match_enabled),
+        )
 
         # Check for duplicate name if changing (within same M3U account)
         # Determine the target account_id (could be changing)
@@ -1232,6 +1324,7 @@ def update_group_by_id(group_id: int, request: GroupUpdate):
                 custom_regex_event_name=request.custom_regex_event_name,
                 custom_regex_event_name_enabled=request.custom_regex_event_name_enabled,
                 skip_builtin_filter=request.skip_builtin_filter,
+                name_match_enabled=request.name_match_enabled,
                 team_streams_enabled=request.team_streams_enabled,
                 epg_match_enabled=request.epg_match_enabled,
                 include_teams=[t.model_dump() for t in request.include_teams]
@@ -1284,11 +1377,15 @@ def update_group_by_id(group_id: int, request: GroupUpdate):
 
         # Clean up XMLTV content when group is disabled
         if request.enabled is False:
-            from teamarr.database.groups import delete_group_xmltv
 
             delete_group_xmltv(conn, group_id)
 
         group = get_group(conn, group_id)
+        if group is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Group {group_id} could not be loaded after update",
+            )
         channel_count = get_group_channel_count(conn, group_id)
 
     logger.info("[UPDATED] Event group id=%d", group_id)
@@ -1333,6 +1430,7 @@ def update_group_by_id(group_id: int, request: GroupUpdate):
         custom_regex_event_name=group.custom_regex_event_name,
         custom_regex_event_name_enabled=group.custom_regex_event_name_enabled,
         skip_builtin_filter=group.skip_builtin_filter,
+        name_match_enabled=group.name_match_enabled,
         team_streams_enabled=group.team_streams_enabled,
         epg_match_enabled=group.epg_match_enabled,
         include_teams=[TeamFilterEntry(**t) for t in group.include_teams]
@@ -1378,7 +1476,6 @@ def delete_group_by_id(group_id: int) -> dict:
 
     Warning: This will cascade delete all managed channels for this group.
     """
-    from teamarr.database.groups import delete_group, get_group, get_group_channel_count
 
     with get_db() as conn:
         group = get_group(conn, group_id)
@@ -1426,7 +1523,6 @@ def get_group_stats(group_id: int):
 @router.post("/{group_id}/enable")
 def enable_group(group_id: int) -> dict:
     """Enable an event EPG group."""
-    from teamarr.database.groups import get_group, set_group_enabled
 
     with get_db() as conn:
         group = get_group(conn, group_id)
@@ -1444,7 +1540,6 @@ def enable_group(group_id: int) -> dict:
 @router.post("/{group_id}/disable")
 def disable_group(group_id: int) -> dict:
     """Disable an event EPG group."""
-    from teamarr.database.groups import get_group, set_group_enabled
 
     with get_db() as conn:
         group = get_group(conn, group_id)
@@ -1466,8 +1561,6 @@ def clear_group_match_cache(group_id: int):
     Forces re-matching on next EPG generation run. Useful when matching
     algorithm changes or cached matches are incorrect.
     """
-    from teamarr.consumers.stream_match_cache import StreamMatchCache
-    from teamarr.database.groups import get_group
 
     with get_db() as conn:
         group = get_group(conn, group_id)
@@ -1477,11 +1570,11 @@ def clear_group_match_cache(group_id: int):
                 detail=f"Group {group_id} not found",
             )
 
-    cache = StreamMatchCache(get_db)
-    entries_cleared = cache.clear_group(group_id)
+    entries_cleared, stats_cleared = clear_group_match_data(get_db, group_id)
 
     logger.info(
-        "[CACHE_CLEAR] group_id=%d name=%s entries=%d", group_id, group.name, entries_cleared
+        "[CACHE_CLEAR] group_id=%d name=%s entries=%d stats_cleared=%d",
+        group_id, group.name, entries_cleared, stats_cleared,
     )
 
     return ClearCacheResponse(
@@ -1498,24 +1591,26 @@ def clear_groups_match_cache(request: ClearCacheRequest):
 
     Forces re-matching on next EPG generation run for all specified groups.
     """
-    from teamarr.consumers.stream_match_cache import StreamMatchCache
-    from teamarr.database.groups import get_group
 
-    cache = StreamMatchCache(get_db)
     results: list[ClearCacheGroupResult] = []
     total_cleared = 0
+    total_stats_cleared = 0
 
     with get_db() as conn:
-        for group_id in request.group_ids:
-            group = get_group(conn, group_id)
-            if not group:
-                continue
+        valid_group_ids = [
+            group_id for group_id in request.group_ids if get_group(conn, group_id)
+        ]
 
-            cleared = cache.clear_group(group_id)
-            results.append(ClearCacheGroupResult(group_id=group_id, cleared=cleared))
-            total_cleared += cleared
+    for group_id in valid_group_ids:
+        cleared, stats_cleared = clear_group_match_data(get_db, group_id)
+        results.append(ClearCacheGroupResult(group_id=group_id, cleared=cleared))
+        total_cleared += cleared
+        total_stats_cleared += stats_cleared
 
-    logger.info("[CACHE_CLEAR_BULK] groups=%d total_cleared=%d", len(results), total_cleared)
+    logger.info(
+        "[CACHE_CLEAR_BULK] groups=%d total_cleared=%d total_stats_cleared=%d",
+        len(results), total_cleared, total_stats_cleared,
+    )
 
     return ClearCacheResponse(
         success=True,
@@ -1530,12 +1625,10 @@ def clear_all_match_cache():
 
     Forces re-matching on next EPG generation run for every group.
     """
-    from teamarr.consumers.stream_match_cache import StreamMatchCache
 
-    cache = StreamMatchCache(get_db)
-    cleared = cache.clear_all()
+    cleared, stats_cleared = clear_all_match_data(get_db)
 
-    logger.info("[CACHE_CLEAR_ALL] Cleared %d entries", cleared)
+    logger.info("[CACHE_CLEAR_ALL] Cleared %d entries stats_cleared=%d", cleared, stats_cleared)
 
     return ClearCacheResponse(
         success=True,
@@ -1554,7 +1647,6 @@ def list_m3u_groups():
 
     Returns groups that can be used as stream sources for event EPG groups.
     """
-    from teamarr.dispatcharr import get_dispatcharr_connection
 
     conn = get_dispatcharr_connection(get_db)
     if not conn:
@@ -1590,7 +1682,6 @@ def list_dispatcharr_channel_groups() -> dict:
 
     Returns channel groups that can be assigned to event EPG groups.
     """
-    from teamarr.dispatcharr import get_dispatcharr_connection
 
     conn = get_dispatcharr_connection(get_db)
     if not conn:
@@ -1662,9 +1753,6 @@ def preview_group(group_id: int):
     """
     from datetime import date
 
-    from teamarr.database.groups import get_group
-    from teamarr.dispatcharr import get_factory
-    from teamarr.services import create_group_service
 
     with get_db() as conn:
         group = get_group(conn, group_id)
@@ -1740,8 +1828,6 @@ def get_raw_streams(group_id: int):
     Returns minimal stream data (id + name) for regex testing in the UI.
     Fetches directly from Dispatcharr without running the matching pipeline.
     """
-    from teamarr.database.groups import get_group
-    from teamarr.dispatcharr import get_factory
 
     with get_db() as conn:
         group = get_group(conn, group_id)
@@ -1774,13 +1860,6 @@ def get_raw_streams(group_id: int):
         account_id=group.m3u_account_id,
     )
 
-    from teamarr.api.routes import natural_sort_key
-    from teamarr.services.stream_filter import (
-        UNSUPPORTED_SPORTS,
-        detect_sport_hint,
-        is_event_stream,
-        is_placeholder,
-    )
 
     def get_builtin_filter_reason(name: str) -> str | None:
         """Check all builtin filters and return reason if filtered."""
@@ -1831,7 +1910,6 @@ def get_group_xmltv(group_id: int) -> Response:
 
     Returns 404 if the group hasn't been processed yet.
     """
-    from teamarr.database.groups import get_group, get_group_xmltv_with_metadata
 
     with get_db() as conn:
         group = get_group(conn, group_id)
@@ -1866,9 +1944,6 @@ def get_combined_xmltv() -> Response:
     Merges XMLTV content from all groups that have been processed.
     This is useful for having a single EPG source in Dispatcharr.
     """
-    from teamarr.database.groups import get_all_group_xmltv
-    from teamarr.database.settings import get_display_settings
-    from teamarr.utilities.xmltv import merge_xmltv_content
 
     with get_db() as conn:
         xmltv_contents = get_all_group_xmltv(conn)

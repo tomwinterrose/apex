@@ -22,6 +22,9 @@ from datetime import datetime
 from sqlite3 import Connection
 from typing import Any
 
+from teamarr.dispatcharr import ChannelManager
+from teamarr.dispatcharr.factory import DispatcharrConnection, get_dispatcharr_connection
+
 logger = logging.getLogger(__name__)
 
 
@@ -233,11 +236,18 @@ class ChannelReconciler:
             if not channel.dispatcharr_channel_id:
                 continue
 
-            # Check if channel exists in Dispatcharr
+            # Check if channel exists in Dispatcharr. Only a confirmed 404 is a
+            # real orphan; a transient failure must not mark a live channel
+            # deleted (that recreates a duplicate next run).
             with self._dispatcharr_lock:
-                dispatcharr_channel = self._channel_manager.get_channel(
-                    channel.dispatcharr_channel_id
+                dispatcharr_channel, confirmed_absent = (
+                    self._channel_manager.get_channel_existence(
+                        channel.dispatcharr_channel_id
+                    )
                 )
+
+            if dispatcharr_channel is None and not confirmed_absent:
+                continue  # Inconclusive — re-verify next run
 
             if not dispatcharr_channel:
                 issues.append(
@@ -309,7 +319,7 @@ class ChannelReconciler:
             # Check if this is a Teamarr channel
             is_ours_by_uuid = channel_uuid and channel_uuid in known_uuids
             is_ours_by_id = channel_id in known_channel_ids
-            has_teamarr_tvg_id = tvg_id.startswith("teamarr-event-")
+            has_teamarr_tvg_id = tvg_id.startswith("vroomarr-event-")
 
             # If we know this channel, it's not orphaned
             if is_ours_by_uuid or is_ours_by_id:
@@ -317,7 +327,7 @@ class ChannelReconciler:
 
             # If it has our tvg_id pattern but we don't have a record, it's orphaned
             if has_teamarr_tvg_id:
-                event_id = tvg_id.replace("teamarr-event-", "")
+                event_id = tvg_id.replace("vroomarr-event-", "")
 
                 issues.append(
                     ReconciliationIssue(
@@ -687,21 +697,26 @@ class ChannelReconciler:
                     suggested_action="sync_to_dispatcharr",
                 )
 
-            # Check if exists in Dispatcharr
+            # Check if exists in Dispatcharr. Only a confirmed 404 is a real
+            # orphan; an inconclusive result is re-verified on a later run.
             with self._dispatcharr_lock:
-                dispatcharr_channel = self._channel_manager.get_channel(
-                    channel.dispatcharr_channel_id
+                dispatcharr_channel, confirmed_absent = (
+                    self._channel_manager.get_channel_existence(
+                        channel.dispatcharr_channel_id
+                    )
                 )
 
-            if not dispatcharr_channel:
-                return ReconciliationIssue(
-                    issue_type="orphan_teamarr",
-                    severity="warning",
-                    managed_channel_id=channel.id,
-                    dispatcharr_channel_id=channel.dispatcharr_channel_id,
-                    channel_name=channel.channel_name,
-                    suggested_action="mark_deleted",
-                )
+            if dispatcharr_channel is None:
+                if confirmed_absent:
+                    return ReconciliationIssue(
+                        issue_type="orphan_teamarr",
+                        severity="warning",
+                        managed_channel_id=channel.id,
+                        dispatcharr_channel_id=channel.dispatcharr_channel_id,
+                        channel_name=channel.channel_name,
+                        suggested_action="mark_deleted",
+                    )
+                return None  # Inconclusive — re-verify on a later run
 
             # Check for drift
             if channel.tvg_id and channel.tvg_id != dispatcharr_channel.tvg_id:
@@ -756,8 +771,6 @@ def create_reconciler(
     channel_manager = None
 
     if dispatcharr_client and dispatcharr_settings.get("enabled"):
-        from teamarr.dispatcharr import ChannelManager
-        from teamarr.dispatcharr.factory import DispatcharrConnection
 
         # Extract raw client if we received a DispatcharrConnection
         raw_client = (
@@ -800,7 +813,6 @@ def detect_stale_groups(db_factory: Any) -> list[dict]:
         mark_group_source_missing,
         mark_group_source_seen,
     )
-    from teamarr.dispatcharr.factory import get_dispatcharr_connection
 
     conn_dc = get_dispatcharr_connection(db_factory=db_factory)
     if conn_dc is None:

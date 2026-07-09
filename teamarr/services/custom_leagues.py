@@ -26,15 +26,21 @@ from __future__ import annotations
 import logging
 import sqlite3
 
+from teamarr.consumers.cache.refresh import CacheRefresher
 from teamarr.database import get_db
+from teamarr.database.groups import get_enabled_soccer_leagues
 from teamarr.database.leagues import (
     delete_custom_league_row,
     get_league_row,
     insert_custom_league,
+    list_custom_leagues,
     purge_league_cache_rows,
     update_custom_league_row,
 )
 from teamarr.database.settings.read import get_tsdb_api_key
+from teamarr.database.subscription import get_subscription, update_subscription
+from teamarr.providers.tsdb import TSDBClient
+from teamarr.services.league_mappings import get_league_mapping_service
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +337,66 @@ def create_custom_league(
         event_type=resolved_event_type,
         tsdb_tier=tier,
     )
-    return get_league_row(conn, code)
+    _auto_subscribe(conn, code)
+    row = get_league_row(conn, code)
+    assert row is not None  # row just created above
+    return row
+
+
+def _auto_subscribe(conn: sqlite3.Connection, league_code: str) -> None:
+    """Add a freshly-created custom league to the global sports subscription.
+
+    Every event group resolves its match/inclusion leagues from the global
+    ``sports_subscription`` (see ``_resolve_subscription_leagues``), so a custom
+    league the user never explicitly subscribes to produces zero matches
+    (``no_event_found``) and zero included events — the exact GH #240 footgun.
+    Subscribing on create closes that gap so a newly-added league "just works".
+
+    Idempotent: a code already in the list is left untouched. Note a soccer
+    league in ``soccer_mode='all'`` is matched via the all-soccer expansion
+    regardless, so this is a no-op-but-harmless add in that mode.
+    """
+
+    sub = get_subscription(conn)
+    if league_code in sub.leagues:
+        return
+    update_subscription(conn, leagues=[*sub.leagues, league_code])
+    logger.info(
+        "[CUSTOM_LEAGUE] Auto-subscribed %s to the global sports subscription",
+        league_code,
+    )
+
+
+def global_subscription_league_codes(conn: sqlite3.Connection) -> set[str]:
+    """Effective set of league codes the global subscription will match.
+
+    Mirrors the global branch of ``_resolve_subscription_leagues`` (including the
+    ``soccer_mode='all'`` expansion) so the UI's "subscribed?" signal matches what
+    generation actually includes. Per-group subscription overrides are not
+    considered here — this is the install-wide default a custom league lands in.
+    """
+
+    sub = get_subscription(conn)
+    codes: set[str] = set(sub.leagues)
+    if sub.soccer_mode == "all":
+        codes.update(get_enabled_soccer_leagues(conn))
+    return codes
+
+
+def list_custom_leagues_with_state(conn: sqlite3.Connection) -> list[dict]:
+    """List custom leagues, each annotated with a ``subscribed`` flag.
+
+    ``subscribed=False`` is the #240 warning signal: the league exists but the
+    global subscription won't match its events, so it silently produces nothing
+    until the user subscribes it. Creation auto-subscribes (:func:`_auto_subscribe`),
+    so this only trips when a user later unchecks the league in Subscriptions.
+    """
+
+    subscribed = global_subscription_league_codes(conn)
+    return [
+        {**row, "subscribed": row["league_code"] in subscribed}
+        for row in list_custom_leagues(conn)
+    ]
 
 
 def _load_custom_or_raise(conn: sqlite3.Connection, league_code: str) -> dict:
@@ -385,7 +450,9 @@ def update_custom_league(
         event_type=resolved_event_type,
         tsdb_tier=tier,
     )
-    return get_league_row(conn, code)
+    row = get_league_row(conn, code)
+    assert row is not None  # row just upserted above
+    return row
 
 
 def delete_custom_league(conn: sqlite3.Connection, league_code: str) -> None:
@@ -462,7 +529,6 @@ def run_custom_league_test_fetch(
     validate_custom_league_sport(chosen_sport)
 
     # Imported lazily so the policy module stays import-light and test-friendly.
-    from teamarr.providers.tsdb import TSDBClient
 
     client = TSDBClient(api_key=get_tsdb_api_key(conn))
 
@@ -520,7 +586,6 @@ def refresh_custom_league_teams(league_code: str) -> dict:
     Returns the refresher's result dict, or a ``success=False`` dict if the
     refresh machinery itself blows up.
     """
-    from teamarr.consumers.cache.refresh import CacheRefresher
 
     try:
         return CacheRefresher().refresh_league(league_code)
@@ -557,7 +622,6 @@ def _reload_league_mappings() -> None:
     Best-effort: if the service isn't initialized (e.g. in unit tests that call
     the create path directly), there's nothing to reload and we move on.
     """
-    from teamarr.services.league_mappings import get_league_mapping_service
 
     try:
         get_league_mapping_service().reload()

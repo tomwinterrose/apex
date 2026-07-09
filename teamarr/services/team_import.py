@@ -9,6 +9,8 @@ import logging
 from dataclasses import dataclass
 from sqlite3 import Connection
 
+from teamarr.database.leagues import get_league_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,7 +61,6 @@ def _generate_channel_id(
     If the base channel_id collides with an existing DB row or an ID already
     used in this import batch, appends the provider_team_id to disambiguate.
     """
-    from teamarr.database.leagues import get_league_id
 
     name = "".join(
         word.capitalize()
@@ -207,6 +208,7 @@ def bulk_import_teams(conn: Connection, teams: list[ImportTeam]) -> ImportResult
                 )
                 used_ids.add(channel_id)
                 new_id = cursor.lastrowid
+                assert new_id is not None  # INSERT always yields a rowid
                 existing_full[full_key] = (new_id, all_leagues)
                 existing_sport[sport_key] = [(new_id, team.league, all_leagues)]
                 imported += 1
@@ -241,6 +243,7 @@ def bulk_import_teams(conn: Connection, teams: list[ImportTeam]) -> ImportResult
                 )
                 used_ids.add(channel_id)
                 new_id = cursor.lastrowid
+                assert new_id is not None  # INSERT always yields a rowid
                 existing_full[full_key] = (new_id, [team.league])
                 if sport_key not in existing_sport:
                     existing_sport[sport_key] = []

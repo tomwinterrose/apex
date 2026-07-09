@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 _XTREAM_ACCOUNT_TYPE = "XC"
 
 # epg_source label stamped on programs parsed from a provider's own xmltv, so
-# they're distinguishable in logs and never collide with DP's "_Teamarr" guard.
+# they're distinguishable in logs and never collide with DP's "_Vroomarr" guard.
 XTREAM_EPG_SOURCE = "_xtream"
 
 # XMLTV timestamp: "YYYYMMDDHHMMSS[ +ZZZZ]" (offset optional; assume UTC if absent).

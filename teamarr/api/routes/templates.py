@@ -10,12 +10,62 @@ from teamarr.api.models import (
     TemplateFullResponse,
     TemplateResponse,
     TemplateUpdate,
+    TemplateValidateRequest,
+    TemplateValidateResponse,
 )
 from teamarr.database import get_db
+from teamarr.database.templates import (
+    create_template as db_create,
+)
+from teamarr.database.templates import (
+    delete_template as db_delete,
+)
+from teamarr.database.templates import (
+    get_template as db_get,
+)
+from teamarr.database.templates import (
+    get_template_raw,
+    list_templates_with_counts,
+)
+from teamarr.database.templates import (
+    update_template as db_update,
+)
+from teamarr.templates.validation import (
+    validate_conditional_descriptions,
+    validate_fields,
+    warnings_as_dicts,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Flat string fields that accept template variables. Used to log advisory
+# validation warnings on write so programmatic saves (API/import) surface the
+# same issues the editor shows. Nested conditional/fallback templates are
+# validated separately (see teamarrv2-3zjp.3).
+_VALIDATED_TEXT_FIELDS = (
+    "title_format",
+    "subtitle_template",
+    "description_template",
+    "program_art_url",
+    "event_channel_name",
+    "event_channel_logo_url",
+)
+
+
+def _log_validation_warnings(template_type: str | None, data: dict) -> None:
+    """Validate template text + conditional-description fields, log warnings (non-blocking)."""
+
+    is_event = (template_type or "team") == "event"
+    fields = {k: data.get(k) for k in _VALIDATED_TEXT_FIELDS if data.get(k)}
+    results = validate_fields(fields, is_event) if fields else {}
+    cond = data.get("conditional_descriptions")
+    if cond:
+        results.update(validate_conditional_descriptions(cond, is_event))
+    for field, warnings in results.items():
+        for w in warnings:
+            logger.warning("[template-validation] %s: %s", field, w.message)
 
 # JSON fields that need serialization from Pydantic models to strings
 _JSON_FIELDS = {
@@ -63,16 +113,31 @@ def _parse_json_fields(row: dict) -> dict:
 @router.get("/templates", response_model=list[TemplateResponse])
 def list_templates():
     """List all templates with usage counts."""
-    from teamarr.database.templates import list_templates_with_counts
 
     with get_db() as conn:
         return list_templates_with_counts(conn)
 
 
+@router.post("/templates/validate", response_model=TemplateValidateResponse)
+def validate_template(req: TemplateValidateRequest):
+    """Validate template field strings for unknown/misused variables (advisory).
+
+    Returns per-field warnings without saving. Mirrors the editor's inline checks
+    so API/import callers can catch the same issues. Never rejects — the resolver
+    keeps unknown variables literal by design.
+    """
+
+    is_event = req.template_type == "event"
+    results = validate_fields(req.fields, is_event)
+    results.update(
+        validate_conditional_descriptions(req.conditional_descriptions or [], is_event)
+    )
+    return {"valid": not results, "warnings": warnings_as_dicts(results)}
+
+
 @router.post("/templates", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
 def create_template(template: TemplateCreate):
     """Create a new template."""
-    from teamarr.database.templates import create_template as db_create
 
     # Convert Pydantic models to plain types for database layer
     data = template.model_dump()
@@ -85,10 +150,11 @@ def create_template(template: TemplateCreate):
         if v is not None:
             kwargs[k] = _pydantic_to_plain(k, getattr(template, k, v))
 
+    _log_validation_warnings(template_type, data)
+
     with get_db() as conn:
         try:
             template_id = db_create(conn, name=name, template_type=template_type, **kwargs)
-            from teamarr.database.templates import get_template_raw
 
             return get_template_raw(conn, template_id)
         except Exception as e:
@@ -105,7 +171,6 @@ def get_template(template_id: int):
     """Get a template by ID with all JSON fields parsed."""
     from dataclasses import asdict
 
-    from teamarr.database.templates import get_template as db_get
 
     with get_db() as conn:
         template = db_get(conn, template_id)
@@ -120,7 +185,6 @@ def get_template(template_id: int):
 @router.put("/templates/{template_id}", response_model=TemplateResponse)
 def update_template(template_id: int, template: TemplateUpdate):
     """Update a template."""
-    from teamarr.database.templates import update_template as db_update
 
     updates = {k: v for k, v in template.model_dump().items() if v is not None}
     if not updates:
@@ -135,15 +199,15 @@ def update_template(template_id: int, template: TemplateUpdate):
                 status_code=status.HTTP_404_NOT_FOUND, detail="Template not found"
             )
         logger.info("[UPDATED] Template id=%d fields=%s", template_id, list(updates.keys()))
-        from teamarr.database.templates import get_template_raw
 
-        return get_template_raw(conn, template_id)
+        row = get_template_raw(conn, template_id)
+        _log_validation_warnings((row or {}).get("template_type"), updates)
+        return row
 
 
 @router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_template(template_id: int):
     """Delete a template."""
-    from teamarr.database.templates import delete_template as db_delete
 
     with get_db() as conn:
         if not db_delete(conn, template_id):

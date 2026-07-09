@@ -17,7 +17,7 @@ Usage:
             name="Giants @ Cowboys",
             channel_number=5001,
             stream_ids=[456],
-            tvg_id="teamarr-event-12345"
+            tvg_id="vroomarr-event-12345"
         )
 
         if result.success:
