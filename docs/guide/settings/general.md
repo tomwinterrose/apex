@@ -12,7 +12,7 @@ Configure timezone, time format, and display preferences.
 
 ## Timezones
 
-Teamarr uses two timezone settings:
+Apex uses two timezone settings:
 
 ### UI Display Timezone
 

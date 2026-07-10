@@ -12,7 +12,7 @@ Docker Compose is the recommended method for installation.
 ## Prerequisites
 
 - Docker
-- [Dispatcharr](https://github.com/Dispatcharr/Dispatcharr) (highly recommended - Teamarr is designed for tight integration with Dispatcharr)
+- [Dispatcharr](https://github.com/Dispatcharr/Dispatcharr) (highly recommended - Apex is designed for tight integration with Dispatcharr)
 - [Game-Thumbs](game-thumbs.md) (optional - sports matchup thumbnail and logo generation)
 
 ## Docker
@@ -23,16 +23,16 @@ Docker Compose is the recommended method for installation.
 
 ```yaml
 services:
-  teamarr:
-    image: ghcr.io/pharaoh-labs/teamarr:latest
-    container_name: teamarr
+  apex:
+    image: ghcr.io/tomwinterrose/apex:latest
+    container_name: apex
     restart: unless-stopped
     ports:
       - 9195:9195
     volumes:
       - ./data:/app/data
     environment:
-      # UI timezone - controls time display in the Teamarr web interface
+      # UI timezone - controls time display in the Apex web interface
       # EPG output timezone is configured separately in Settings
       - TZ=America/New_York
 
@@ -55,26 +55,26 @@ services:
 
 ### Unraid
 
-An Unraid Docker template is available in the Community Applications store. Search for "Teamarr" to install directly from the Unraid UI.
+An Unraid Docker template is available in the Community Applications store. Search for "Apex" to install directly from the Unraid UI.
 
-Open Teamarr at `http://<your-server>:9195`
+Open Apex at `http://<your-server>:9195`
 
 ## Data Persistence
 
-All Teamarr data is stored in the `./data` volume mount:
+All Apex data is stored in the `./data` volume mount:
 
 | Path | Contents |
 |------|----------|
-| `data/teamarr.db` | Database — teams, templates, settings, event groups, run history |
+| `data/apex.db` | Database — teams, templates, settings, event groups, run history |
 | `data/logs/` | Log files (rotating, auto-managed) |
 | `data/epg/` | Generated XMLTV output |
 
 {: .warning }
-**Never delete `teamarr.db`** — it contains all your configuration. Schema upgrades are handled automatically via migrations on startup.
+**Never delete `apex.db`** — it contains all your configuration. Schema upgrades are handled automatically via migrations on startup.
 
 ## First Run
 
-On first startup, Teamarr will:
+On first startup, Apex will:
 
 1. Create the database and run all migrations
 2. Refresh the league and team cache from providers (~2-3 minutes)
@@ -87,11 +87,11 @@ The dashboard will show a **Getting Started** guide walking you through initial 
 Pull the latest image and recreate the container:
 
 ```bash
-docker compose pull teamarr
-docker compose up -d teamarr
+docker compose pull apex
+docker compose up -d apex
 ```
 
-Teamarr handles database migrations automatically — no manual steps needed between versions.
+Apex handles database migrations automatically — no manual steps needed between versions.
 
 {: .note }
-Advanced users familiar with Python may run Teamarr locally without Docker. Clone the repository and run `python app.py`.
+Advanced users familiar with Python may run Apex locally without Docker. Clone the repository and run `python app.py`.

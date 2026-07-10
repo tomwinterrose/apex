@@ -11,8 +11,8 @@ Verifies that:
 
 from fastapi.testclient import TestClient
 
-from teamarr.api.app import app
-from teamarr.templates.variables import (
+from apex.api.app import app
+from apex.templates.variables import (
     TemplateScope,
     VariableDefinition,
     get_registry,
@@ -26,7 +26,7 @@ def test_variable_definition_default_scope_is_all():
         return ""
 
     # Minimal construction — defaults exercised
-    from teamarr.templates.variables.registry import (
+    from apex.templates.variables.registry import (
         Category,
         SuffixRules,
     )

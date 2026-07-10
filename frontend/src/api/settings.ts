@@ -74,7 +74,7 @@ export type DurationSettings = Record<string, number>
 export interface ReconciliationSettings {
   reconcile_on_epg_generation: boolean
   reconcile_on_startup: boolean
-  auto_fix_orphan_teamarr: boolean
+  auto_fix_orphan_apex: boolean
   auto_fix_orphan_dispatcharr: boolean
   auto_fix_duplicates: boolean
   default_duplicate_event_handling: string

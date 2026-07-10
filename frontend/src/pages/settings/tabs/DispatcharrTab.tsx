@@ -201,7 +201,7 @@ export function DispatcharrTab({ initial }: { initial: DispatcharrSettings }) {
               ))}
             </Select>
             <p className="text-xs text-muted-foreground">
-              Associate Vroomarr-managed channels with this EPG source in Dispatcharr.
+              Associate Apex-managed channels with this EPG source in Dispatcharr.
             </p>
           </div>
 
@@ -231,7 +231,7 @@ export function DispatcharrTab({ initial }: { initial: DispatcharrSettings }) {
             </div>
             <p className="text-xs text-muted-foreground">
               When enabled, removes <strong>all</strong> unused logos from Dispatcharr after EPG generation.
-              This affects all unused logos, not just ones uploaded by Vroomarr.
+              This affects all unused logos, not just ones uploaded by Apex.
             </p>
           </div>
 

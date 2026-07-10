@@ -5,7 +5,7 @@ stream_match_cache AND nulling cached stream stats. The orchestrators keep them
 together so a caller can't clear one and forget the other.
 """
 
-from teamarr.consumers.stream_match_cache import (
+from apex.consumers.stream_match_cache import (
     clear_all_match_data,
     clear_group_match_data,
 )

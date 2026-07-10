@@ -14,8 +14,8 @@ to every category before routing.)
 import sqlite3
 from unittest.mock import MagicMock
 
-from teamarr.consumers.matching.classifier import StreamCategory, classify_stream
-from teamarr.consumers.matching.matcher import StreamMatcher
+from apex.consumers.matching.classifier import StreamCategory, classify_stream
+from apex.consumers.matching.matcher import StreamMatcher
 from tests.helpers import SCHEMA_PATH
 
 SCHEMA = SCHEMA_PATH

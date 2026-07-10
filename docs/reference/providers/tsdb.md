@@ -8,7 +8,7 @@ docs_version: "2.3.1"
 
 # TheSportsDB Provider
 
-TheSportsDB (TSDB) is a community-driven sports data API. Teamarr uses it as a fallback provider (priority 100) for leagues not covered by ESPN, including Australian sports, cricket, boxing, CFL, Scandinavian leagues, and motorsports (IMSA, WEC).
+TheSportsDB (TSDB) is a community-driven sports data API. Apex uses it as a fallback provider (priority 100) for leagues not covered by ESPN, including Australian sports, cricket, boxing, CFL, Scandinavian leagues, and motorsports (IMSA, WEC).
 
 ## API Details
 
@@ -95,7 +95,7 @@ these leagues fetch the full season via `eventsseason.php` exclusively and
 filter client-side by session date.
 
 TSDB models a race weekend as several flat, per-session events (Free
-Practice 1, Qualifying, Race, ...) that share a season/round. `teamarr/providers/tsdb/racing.py`
+Practice 1, Qualifying, Race, ...) that share a season/round. `apex/providers/tsdb/racing.py`
 groups these by `(strSeason, intRound)` into the same `Event(sessions=[...],
 circuit_name=...)` shape the racing pipeline expects from ESPN/static
 providers — one EPG program block per session (Practice, Qualifying,
@@ -108,9 +108,9 @@ and works fully on free tier.
 
 ## Rate Limiting
 
-Teamarr enforces rate limits **preemptively** using a sliding window limiter — it tracks request timestamps and waits before approaching the limit, rather than waiting for 429 responses.
+Apex enforces rate limits **preemptively** using a sliding window limiter — it tracks request timestamps and waits before approaching the limit, rather than waiting for 429 responses.
 
-If the API does return HTTP 429, Teamarr retries with exponential backoff (5s → 10s → 20s → 40s → 80s).
+If the API does return HTTP 429, Apex retries with exponential backoff (5s → 10s → 20s → 40s → 80s).
 
 Rate limit statistics (total requests, preemptive waits, reactive waits) are tracked and available for UI feedback.
 
@@ -162,7 +162,7 @@ Other season-adjacent fields (`strSeason` year string, `strGroup`) don't help. P
 
 | File | Purpose |
 |------|---------|
-| `teamarr/providers/tsdb/provider.py` | TSDBProvider class |
-| `teamarr/providers/tsdb/client.py` | HTTP client with preemptive rate limiting |
+| `apex/providers/tsdb/provider.py` | TSDBProvider class |
+| `apex/providers/tsdb/client.py` | HTTP client with preemptive rate limiting |
 
 For detailed API endpoint documentation, see the [TSDB API Reference](tsdb-api).

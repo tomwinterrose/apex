@@ -7,13 +7,13 @@ docs_version: "2.3.1"
 
 # Detection Library
 
-The Detection Library manages how Teamarr classifies and identifies streams. It contains keywords, patterns, and team aliases that help the stream matcher understand what sport, league, and event a stream belongs to.
+The Detection Library manages how Apex classifies and identifies streams. It contains keywords, patterns, and team aliases that help the stream matcher understand what sport, league, and event a stream belongs to.
 
 The library has five tabs, each handling a different aspect of stream classification.
 
 ## Team Aliases
 
-Map alternate team names to their official names. IPTV providers often use shortened or unofficial team names (e.g., "Niners" instead of "San Francisco 49ers"). Aliases tell Teamarr to treat them as the same team.
+Map alternate team names to their official names. IPTV providers often use shortened or unofficial team names (e.g., "Niners" instead of "San Francisco 49ers"). Aliases tell Apex to treat them as the same team.
 
 ### Table Columns
 
@@ -37,7 +37,7 @@ To change an alias, delete it and create a new one. Aliases cannot be edited in 
 
 ## Event Type Detection
 
-Keywords that identify what type of event a stream represents. These help Teamarr distinguish between regular games, fight cards, tournaments, and other event formats.
+Keywords that identify what type of event a stream represents. These help Apex distinguish between regular games, fight cards, tournaments, and other event formats.
 
 ### Table Columns
 
@@ -51,7 +51,7 @@ Keywords that identify what type of event a stream represents. These help Teamar
 
 ## League Hints
 
-Keywords that identify which league a stream belongs to. When a stream name contains a league hint keyword, Teamarr narrows its event search to that league.
+Keywords that identify which league a stream belongs to. When a stream name contains a league hint keyword, Apex narrows its event search to that league.
 
 ### Example
 
@@ -87,7 +87,7 @@ Same as Event Type Detection, plus a **Target** column showing sport name(s) as 
 
 ## Separators
 
-Matchup delimiters that split a stream name into two teams. Teamarr ships with built-in separators (`vs`, `@`, `at`, `x`, `contra`, and others), and this tab lets you add locale-specific ones your provider uses.
+Matchup delimiters that split a stream name into two teams. Apex ships with built-in separators (`vs`, `@`, `at`, `x`, `contra`, and others), and this tab lets you add locale-specific ones your provider uses.
 
 The most common reason to add one is the **hyphen** used by Spanish and other European EPGs:
 
@@ -96,7 +96,7 @@ The most common reason to add one is the **hyphen** used by Spanish and other Eu
 | `España - Inglaterra` | ` - ` | Splits into `España` vs `Inglaterra` |
 
 {: .warning }
-Keep the surrounding spaces (`" - "`, not `"-"`) and add hyphen-style separators sparingly. A bare hyphen with no spaces matches inside ordinary words and hyphenated names, causing streams to be split incorrectly. Teamarr preserves the exact spacing you type for separators.
+Keep the surrounding spaces (`" - "`, not `"-"`) and add hyphen-style separators sparingly. A bare hyphen with no spaces matches inside ordinary words and hyphenated names, causing streams to be split incorrectly. Apex preserves the exact spacing you type for separators.
 
 Separators have no **Target Value** — the field is hidden on this tab.
 

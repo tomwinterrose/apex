@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from teamarr.database.checkpoint_v43 import (
+from apex.database.checkpoint_v43 import (
     _get_table_columns,
     _table_exists,
     apply_checkpoint_v43,
@@ -135,7 +135,7 @@ def partial_v20_schema(temp_db):
             schema_version INTEGER DEFAULT 20,
             team_schedule_days_ahead INTEGER DEFAULT 30,
             event_match_days_ahead INTEGER DEFAULT 3,
-            epg_output_path TEXT DEFAULT './teamarr.xml'
+            epg_output_path TEXT DEFAULT './apex.xml'
         )
     """)
     conn.execute("INSERT INTO settings (id, schema_version) VALUES (1, 20)")
@@ -231,7 +231,7 @@ def v42_schema(temp_db):
             team_schedule_days_ahead INTEGER DEFAULT 30,
             event_match_days_ahead INTEGER DEFAULT 3,
             event_match_days_back INTEGER DEFAULT 7,
-            epg_output_path TEXT DEFAULT './data/teamarr.xml',
+            epg_output_path TEXT DEFAULT './data/apex.xml',
             channel_numbering_mode TEXT DEFAULT 'strict_block',
             stream_ordering_rules JSON DEFAULT '[]'
         )
@@ -428,7 +428,7 @@ class TestCheckpointFromV20:
         apply_checkpoint_v43(conn, 20)
 
         row = conn.execute("SELECT epg_output_path FROM settings WHERE id = 1").fetchone()
-        assert row["epg_output_path"] == "./data/teamarr.xml"
+        assert row["epg_output_path"] == "./data/apex.xml"
 
 
 class TestCheckpointFromV42:
@@ -620,7 +620,7 @@ class TestFullMigrationPath:
         conn.commit()
 
         # Import and run migrations
-        from teamarr.database.migrations import _run_migrations
+        from apex.database.migrations import _run_migrations
 
         _run_migrations(conn)
 

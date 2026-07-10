@@ -1,4 +1,4 @@
-"""get_event negative-caches provider misses (teamarrv2-t82y).
+"""get_event negative-caches provider misses (apexv2-t82y).
 
 A failed event fetch (e.g. ESPN 404 on a dead summary endpoint) previously
 cached nothing, so every per-channel refresh_event_status of that event fell
@@ -10,8 +10,8 @@ marker so the per-channel fan-out is absorbed within the coalesce window.
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from teamarr.core.types import Event, EventStatus, Team
-from teamarr.services.sports_data import REFRESH_COALESCE_TTL, SportsDataService
+from apex.core.types import Event, EventStatus, Team
+from apex.services.sports_data import REFRESH_COALESCE_TTL, SportsDataService
 from tests.fakes import FakeCache
 
 

@@ -18,8 +18,8 @@ removes the stray "@") and tightening the month names to bounded abbreviations.
 
 from datetime import date
 
-from teamarr.consumers.matching.classifier import classify_stream
-from teamarr.consumers.matching.normalizer import normalize_stream
+from apex.consumers.matching.classifier import classify_stream
+from apex.consumers.matching.normalizer import normalize_stream
 
 
 class TestDayAtMonthDate:

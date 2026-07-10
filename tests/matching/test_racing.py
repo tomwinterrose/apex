@@ -11,13 +11,13 @@ from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
-from teamarr.consumers.matching.classifier import StreamCategory, classify_stream
-from teamarr.consumers.matching.racing_matcher import RacingMatchContext, RacingMatcher
-from teamarr.consumers.racing_segments import (
+from apex.consumers.matching.classifier import StreamCategory, classify_stream
+from apex.consumers.matching.racing_matcher import RacingMatchContext, RacingMatcher
+from apex.consumers.racing_segments import (
     _parse_duration_from_name,
     _session_duration_hours,
 )
-from teamarr.services.detection_keywords import DetectionKeywordService
+from apex.services.detection_keywords import DetectionKeywordService
 
 
 def setup_function():
@@ -90,9 +90,9 @@ def test_racing_league_hints_cover_all_schema_racing_leagues():
     import re
     from pathlib import Path
 
-    from teamarr.consumers.matching.classifier import _RACING_LEAGUE_HINTS
+    from apex.consumers.matching.classifier import _RACING_LEAGUE_HINTS
 
-    schema = Path("teamarr/database/schema.sql").read_text(encoding="utf-8")
+    schema = Path("apex/database/schema.sql").read_text(encoding="utf-8")
     schema_racing_codes = {
         m.group(1)
         for m in re.finditer(r"^\s*\('([a-z0-9-]+)',[^)\n]*'racing'", schema, re.MULTILINE)
@@ -178,7 +178,7 @@ def test_single_event_country_passes_sanity_check():
 
 
 # ---------------------------------------------------------------------------
-# RacingMatcher anchor-time gating (EPG path) — follow-up to teamarrv2-w42k
+# RacingMatcher anchor-time gating (EPG path) — follow-up to apexv2-w42k
 #
 # The EPG text-evidence gate (has_racing_text_evidence in classifier.py) only
 # proves a programme NAMES a racing series — it says nothing about whether the
@@ -243,7 +243,7 @@ def test_covers_instant_checks_every_session_in_the_weekend():
 
 
 # ---------------------------------------------------------------------------
-# Racing session duration resolution (teamarr/consumers/racing_segments.py)
+# Racing session duration resolution (apex/consumers/racing_segments.py)
 #
 # `_parse_duration_from_name` and `_session_duration_hours` for endurance races
 # (WEC/IMSA) whose race length varies far more than the global "racing" sport

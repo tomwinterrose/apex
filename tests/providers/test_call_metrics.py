@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from teamarr.utilities import call_metrics
+from apex.utilities import call_metrics
 
 
 @pytest.fixture(autouse=True)

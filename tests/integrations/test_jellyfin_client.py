@@ -5,8 +5,8 @@ Emby uses /emby/..., Jellyfin uses the server root. These tests pin
 that contract so nobody collapses the two paths by accident.
 """
 
-from teamarr.emby.client import EmbyClient
-from teamarr.jellyfin.client import JellyfinClient
+from apex.emby.client import EmbyClient
+from apex.jellyfin.client import JellyfinClient
 
 
 class TestUrlPrefix:

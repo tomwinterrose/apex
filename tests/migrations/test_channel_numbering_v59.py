@@ -393,7 +393,7 @@ class TestChannelNumberingSettings:
     """Test the settings dataclass read/write."""
 
     def test_read_defaults(self, v59_db):
-        from teamarr.database.settings.read import get_channel_numbering_settings
+        from apex.database.settings.read import get_channel_numbering_settings
 
         settings = get_channel_numbering_settings(v59_db)
         assert settings.global_channel_mode == "auto"
@@ -401,7 +401,7 @@ class TestChannelNumberingSettings:
         assert settings.global_consolidation_mode == "consolidate"
 
     def test_read_manual_with_starts(self, v59_db):
-        from teamarr.database.settings.read import get_channel_numbering_settings
+        from apex.database.settings.read import get_channel_numbering_settings
 
         v59_db.execute(
             "UPDATE settings SET global_channel_mode = 'manual', "
@@ -413,14 +413,14 @@ class TestChannelNumberingSettings:
         assert settings.league_channel_starts == {"nfl": 5001, "nba": 6001}
 
     def test_read_separate_consolidation(self, v59_db):
-        from teamarr.database.settings.read import get_channel_numbering_settings
+        from apex.database.settings.read import get_channel_numbering_settings
 
         v59_db.execute("UPDATE settings SET global_consolidation_mode = 'separate' WHERE id = 1")
         settings = get_channel_numbering_settings(v59_db)
         assert settings.global_consolidation_mode == "separate"
 
     def test_read_malformed_json_defaults_empty(self, v59_db):
-        from teamarr.database.settings.read import get_channel_numbering_settings
+        from apex.database.settings.read import get_channel_numbering_settings
 
         v59_db.execute("UPDATE settings SET league_channel_starts = 'not-json' WHERE id = 1")
         settings = get_channel_numbering_settings(v59_db)
@@ -436,12 +436,12 @@ class TestGlobalConsolidationMode:
     """Test get_global_consolidation_mode function."""
 
     def test_returns_consolidate_default(self, v59_db):
-        from teamarr.database.channel_numbers import get_global_consolidation_mode
+        from apex.database.channel_numbers import get_global_consolidation_mode
 
         assert get_global_consolidation_mode(v59_db) == "consolidate"
 
     def test_returns_separate_when_set(self, v59_db):
-        from teamarr.database.channel_numbers import get_global_consolidation_mode
+        from apex.database.channel_numbers import get_global_consolidation_mode
 
         v59_db.execute("UPDATE settings SET global_consolidation_mode = 'separate' WHERE id = 1")
         assert get_global_consolidation_mode(v59_db) == "separate"
@@ -456,12 +456,12 @@ class TestGlobalChannelMode:
     """Test get_global_channel_mode function."""
 
     def test_returns_auto_default(self, v59_db):
-        from teamarr.database.channel_numbers import get_global_channel_mode
+        from apex.database.channel_numbers import get_global_channel_mode
 
         assert get_global_channel_mode(v59_db) == "auto"
 
     def test_returns_manual_when_set(self, v59_db):
-        from teamarr.database.channel_numbers import get_global_channel_mode
+        from apex.database.channel_numbers import get_global_channel_mode
 
         v59_db.execute("UPDATE settings SET global_channel_mode = 'manual' WHERE id = 1")
         assert get_global_channel_mode(v59_db) == "manual"

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from teamarr.consumers.matching.classifier import (
+from apex.consumers.matching.classifier import (
     StreamCategory,
     classify_stream,
     detect_and_strip_feed_hint,
@@ -166,7 +166,7 @@ class TestDetectTeamInStreamName:
         )
 
     def test_full_name_match(self, home_team, away_team):
-        from teamarr.consumers.event_group_processor import EventGroupProcessor
+        from apex.consumers.event_group_processor import EventGroupProcessor
 
         result = EventGroupProcessor._detect_team_in_stream_name(
             "baltimore orioles feed", home_team, away_team
@@ -174,7 +174,7 @@ class TestDetectTeamInStreamName:
         assert result == home_team
 
     def test_short_name_match(self, home_team, away_team):
-        from teamarr.consumers.event_group_processor import EventGroupProcessor
+        from apex.consumers.event_group_processor import EventGroupProcessor
 
         result = EventGroupProcessor._detect_team_in_stream_name(
             "orioles feed", home_team, away_team
@@ -182,13 +182,13 @@ class TestDetectTeamInStreamName:
         assert result == home_team
 
     def test_abbreviation_match(self, home_team, away_team):
-        from teamarr.consumers.event_group_processor import EventGroupProcessor
+        from apex.consumers.event_group_processor import EventGroupProcessor
 
         result = EventGroupProcessor._detect_team_in_stream_name("bal feed", home_team, away_team)
         assert result == home_team
 
     def test_away_team_match(self, home_team, away_team):
-        from teamarr.consumers.event_group_processor import EventGroupProcessor
+        from apex.consumers.event_group_processor import EventGroupProcessor
 
         result = EventGroupProcessor._detect_team_in_stream_name(
             "yankees broadcast", home_team, away_team
@@ -196,7 +196,7 @@ class TestDetectTeamInStreamName:
         assert result == away_team
 
     def test_no_match(self, home_team, away_team):
-        from teamarr.consumers.event_group_processor import EventGroupProcessor
+        from apex.consumers.event_group_processor import EventGroupProcessor
 
         result = EventGroupProcessor._detect_team_in_stream_name(
             "generic sports feed", home_team, away_team
@@ -205,7 +205,7 @@ class TestDetectTeamInStreamName:
 
     def test_short_abbreviation_skipped(self):
         """Abbreviations < 3 chars should be skipped (too many false positives)."""
-        from teamarr.consumers.event_group_processor import EventGroupProcessor
+        from apex.consumers.event_group_processor import EventGroupProcessor
 
         team = MockTeam(
             id="1",
@@ -235,7 +235,7 @@ class TestDetectTeamInStreamName:
         "feed orioles yankees" must not be attributed to the Orioles just
         because "feed orioles" matches — the opposing team appears after.
         """
-        from teamarr.consumers.event_group_processor import EventGroupProcessor
+        from apex.consumers.event_group_processor import EventGroupProcessor
 
         result = EventGroupProcessor._detect_team_in_stream_name(
             "feed orioles yankees", home_team, away_team
@@ -244,7 +244,7 @@ class TestDetectTeamInStreamName:
 
     def test_team_specific_feed_still_matches_with_opponent_before(self, home_team, away_team):
         """Opponent BEFORE the keyword is fine — still the home team's feed (#234)."""
-        from teamarr.consumers.event_group_processor import EventGroupProcessor
+        from apex.consumers.event_group_processor import EventGroupProcessor
 
         result = EventGroupProcessor._detect_team_in_stream_name(
             "yankees at orioles feed", home_team, away_team
@@ -295,25 +295,25 @@ class TestBuildFeedLabel:
         )
 
     def test_team_name_style(self, home_team, event):
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         label = ChannelLifecycleService._build_feed_label(home_team, event, "team_name")
         assert label == "Orioles Feed"
 
     def test_short_name_style(self, home_team, event):
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         label = ChannelLifecycleService._build_feed_label(home_team, event, "short_name")
         assert label == "BAL Feed"
 
     def test_home_away_style_home(self, home_team, event):
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         label = ChannelLifecycleService._build_feed_label(home_team, event, "home_away")
         assert label == "Home Feed"
 
     def test_home_away_style_away(self, event):
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         label = ChannelLifecycleService._build_feed_label(event.away_team, event, "home_away")
         assert label == "Away Feed"
@@ -328,12 +328,12 @@ class TestTemplateUsesFeedVar:
     """_template_uses_feed_var() detects feed variables to suppress auto-append."""
 
     def test_no_feed_var_returns_false(self):
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         assert ChannelLifecycleService._template_uses_feed_var("{away_team} @ {home_team}") is False
 
     def test_feed_team_detected(self):
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         assert (
             ChannelLifecycleService._template_uses_feed_var(
@@ -343,7 +343,7 @@ class TestTemplateUsesFeedVar:
         )
 
     def test_feed_team_short_detected(self):
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         assert (
             ChannelLifecycleService._template_uses_feed_var(
@@ -353,7 +353,7 @@ class TestTemplateUsesFeedVar:
         )
 
     def test_feed_team_abbrev_detected(self):
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         assert (
             ChannelLifecycleService._template_uses_feed_var("{home_team} ({feed_team_abbrev})")
@@ -361,7 +361,7 @@ class TestTemplateUsesFeedVar:
         )
 
     def test_feed_home_away_detected(self):
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         assert (
             ChannelLifecycleService._template_uses_feed_var("{home_team} - {feed_home_away}")
@@ -372,7 +372,7 @@ class TestTemplateUsesFeedVar:
         # logo URLs aren't naming output — auto-append should still fire so
         # a template that only uses {feed_team_logo} for icons still gets
         # the suffix in the channel name.
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         assert (
             ChannelLifecycleService._template_uses_feed_var(
@@ -383,7 +383,7 @@ class TestTemplateUsesFeedVar:
 
     def test_substring_does_not_match(self):
         # "{feed_teamish}" should not trigger — exact-token match only.
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         assert ChannelLifecycleService._template_uses_feed_var("{feed_teamish}") is False
 
@@ -392,7 +392,7 @@ class TestFeedTemplateVarsConstant:
     """FEED_TEMPLATE_VARS is the source of truth for the gating list."""
 
     def test_constant_contents(self):
-        from teamarr.consumers.lifecycle.naming import FEED_TEMPLATE_VARS
+        from apex.consumers.lifecycle.naming import FEED_TEMPLATE_VARS
 
         # Naming-relevant feed vars only — logo URL and directional booleans
         # are deliberately excluded.
@@ -469,7 +469,7 @@ class TestFindExistingChannelFeedTeam:
 
     def test_same_event_different_feed_teams(self, db):
         """Two channels for same event with different feed_team_id."""
-        from teamarr.database.channels.crud import (
+        from apex.database.channels.crud import (
             create_managed_channel,
             find_existing_channel,
         )
@@ -513,7 +513,7 @@ class TestFindExistingChannelFeedTeam:
 
     def test_null_feed_team_separate_from_specific(self, db):
         """NULL feed_team_id (unlabeled) should not match specific feed_team_id."""
-        from teamarr.database.channels.crud import (
+        from apex.database.channels.crud import (
             create_managed_channel,
             find_existing_channel,
         )
@@ -570,7 +570,7 @@ class TestFeedSeparationSettings:
         conn.close()
 
     def test_defaults(self, db):
-        from teamarr.database.settings import get_feed_separation_settings
+        from apex.database.settings import get_feed_separation_settings
 
         settings = get_feed_separation_settings(db)
         assert settings.enabled is False
@@ -580,7 +580,7 @@ class TestFeedSeparationSettings:
         assert settings.label_style == "team_name"
 
     def test_update_and_read(self, db):
-        from teamarr.database.settings import (
+        from apex.database.settings import (
             get_feed_separation_settings,
             update_feed_separation_settings,
         )
@@ -608,7 +608,7 @@ class TestFeedSeparationSettings:
 # must read feed_team from the matched_stream and pass its id, so live EPG
 # programmes and filler programmes land on the same per-feed XMLTV channel.
 # Regressed in v2.4.4 (filler path missed the new feed_team_id arg) — bead
-# teamarrv2-eg9.
+# apexv2-eg9.
 # ===========================================================================
 
 
@@ -620,15 +620,15 @@ class TestFillerChannelIdMatchesLiveProgramme:
     def _make_processor(self):
         from unittest.mock import MagicMock, patch
 
-        from teamarr.consumers.event_group_processor import EventGroupProcessor
+        from apex.consumers.event_group_processor import EventGroupProcessor
 
-        with patch("teamarr.consumers.event_group_processor.processor.create_default_service"):
+        with patch("apex.consumers.event_group_processor.processor.create_default_service"):
             return EventGroupProcessor(db_factory=MagicMock())
 
     def _make_event(self, event_id="401815159", provider="espn"):
         from datetime import UTC, datetime
 
-        from teamarr.core import Event, EventStatus, Team
+        from apex.core import Event, EventStatus, Team
 
         team = Team(
             id="t1",
@@ -653,11 +653,11 @@ class TestFillerChannelIdMatchesLiveProgramme:
         )
 
     def test_filler_channel_id_includes_feed_team_id(self):
-        """Pre-fix this test fails: filler emits to vroomarr-event-401815159
-        while live emits to vroomarr-event-401815159-feed-18."""
+        """Pre-fix this test fails: filler emits to apex-event-401815159
+        while live emits to apex-event-401815159-feed-18."""
         from unittest.mock import MagicMock, patch
 
-        from teamarr.consumers.filler.event_filler import (
+        from apex.consumers.filler.event_filler import (
             EventFillerConfig,
             EventFillerResult,
         )
@@ -684,7 +684,7 @@ class TestFillerChannelIdMatchesLiveProgramme:
             captured_channel_ids.append(kwargs.get("channel_id"))
             return EventFillerResult(programmes=[], pregame_count=0, postgame_count=0)
 
-        with patch("teamarr.consumers.event_group_processor.xmltv.EventFillerGenerator") as MockGen:
+        with patch("apex.consumers.event_group_processor.xmltv.EventFillerGenerator") as MockGen:
             MockGen.return_value.generate_with_counts = fake_generate_with_counts
             processor._generate_filler_for_streams(
                 matched_streams=matched_streams,
@@ -692,14 +692,14 @@ class TestFillerChannelIdMatchesLiveProgramme:
                 sport_durations={"baseball": 3.0},
             )
 
-        assert captured_channel_ids == ["vroomarr-event-401815159-feed-18"]
+        assert captured_channel_ids == ["apex-event-401815159-feed-18"]
 
     def test_filler_channel_id_no_feed_team(self):
         """Without feed separation (national broadcast), filler still emits
         to the base channel — matches live programme path."""
         from unittest.mock import patch
 
-        from teamarr.consumers.filler.event_filler import (
+        from apex.consumers.filler.event_filler import (
             EventFillerConfig,
             EventFillerResult,
         )
@@ -724,7 +724,7 @@ class TestFillerChannelIdMatchesLiveProgramme:
             captured_channel_ids.append(kwargs.get("channel_id"))
             return EventFillerResult(programmes=[], pregame_count=0, postgame_count=0)
 
-        with patch("teamarr.consumers.event_group_processor.xmltv.EventFillerGenerator") as MockGen:
+        with patch("apex.consumers.event_group_processor.xmltv.EventFillerGenerator") as MockGen:
             MockGen.return_value.generate_with_counts = fake_generate_with_counts
             processor._generate_filler_for_streams(
                 matched_streams=matched_streams,
@@ -732,14 +732,14 @@ class TestFillerChannelIdMatchesLiveProgramme:
                 sport_durations={"baseball": 3.0},
             )
 
-        assert captured_channel_ids == ["vroomarr-event-401815158"]
+        assert captured_channel_ids == ["apex-event-401815158"]
 
     def test_filler_channel_id_matches_live_epg_path(self):
         """Cross-caller invariant: the channel_id the filler path computes
         for a matched_stream must equal what the live-EPG path computes for
         the same stream. This is the actual user-facing invariant and the
         one that broke in v2.4.4."""
-        from teamarr.consumers.lifecycle import generate_event_tvg_id
+        from apex.consumers.lifecycle import generate_event_tvg_id
 
         # Same stream, computed from both call sites' input shapes.
         feed_team_id = "18"
@@ -756,4 +756,4 @@ class TestFillerChannelIdMatchesLiveProgramme:
         )
 
         assert filler_channel_id == live_channel_id
-        assert filler_channel_id == "vroomarr-event-401815159-feed-18"
+        assert filler_channel_id == "apex-event-401815159-feed-18"

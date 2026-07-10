@@ -1,10 +1,10 @@
-"""Tests for the stream -> EPG-source tvg_id resolver (epic teamarrv2-183).
+"""Tests for the stream -> EPG-source tvg_id resolver (epic apexv2-183).
 
 Covers the precedence cascade (direct tvg_id > curated channel > strict name)
 and the strict-name guardrails that keep "ESPN" from resolving to "ESPN2".
 """
 
-from teamarr.consumers.matching.epg_resolver import (
+from apex.consumers.matching.epg_resolver import (
     normalize_channel_name,
     resolve_program_tvg_ids,
 )

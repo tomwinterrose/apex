@@ -1,4 +1,4 @@
-"""Tests for time-windowed stream membership (teamarrv2-183.5).
+"""Tests for time-windowed stream membership (apexv2-183.5).
 
 Covers compute_stream_window() and the window-aware active set returned by
 get_ordered_stream_ids() — the mechanism that lets one linear stream rotate
@@ -10,8 +10,8 @@ from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from teamarr.consumers.lifecycle.timing import compute_stream_window, is_stream_in_window
-from teamarr.database.channels.streams import (
+from apex.consumers.lifecycle.timing import compute_stream_window, is_stream_in_window
+from apex.database.channels.streams import (
     get_ordered_stream_ids,
     update_stream_window,
 )

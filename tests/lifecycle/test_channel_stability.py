@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from teamarr.database import channel_numbers as cn
+from apex.database import channel_numbers as cn
 
 
 @pytest.fixture
@@ -476,7 +476,7 @@ def test_reset_clears_armed_flag(db):
 
 
 # ---------------------------------------------------------------------------
-# Auto-arm on settings changes (teamarrv2-kc43)
+# Auto-arm on settings changes (apexv2-kc43)
 # ---------------------------------------------------------------------------
 
 
@@ -490,7 +490,7 @@ def _pending(conn) -> bool:
 def test_range_change_arms_relayout_in_sticky_mode(db):
     # Moving the range only takes effect at re-layout (locked channels stay
     # put), so a range change must queue the one-shot re-grid.
-    from teamarr.database.settings.update import update_lifecycle_settings
+    from apex.database.settings.update import update_lifecycle_settings
 
     _set_mode(db, "gap", gap=3)
     db.commit()
@@ -500,7 +500,7 @@ def test_range_change_arms_relayout_in_sticky_mode(db):
 
 
 def test_range_end_change_arms_relayout_in_sticky_mode(db):
-    from teamarr.database.settings.update import update_lifecycle_settings
+    from apex.database.settings.update import update_lifecycle_settings
 
     _set_mode(db, "strict")
     db.commit()
@@ -512,7 +512,7 @@ def test_range_end_change_arms_relayout_in_sticky_mode(db):
 def test_unchanged_range_does_not_arm(db):
     # The UI full-PUTs the settings object — saving the same values must not
     # queue a re-grid.
-    from teamarr.database.settings.update import update_lifecycle_settings
+    from apex.database.settings.update import update_lifecycle_settings
 
     _set_mode(db, "gap", gap=3)
     db.execute("UPDATE settings SET channel_range_start = 101, channel_range_end = NULL")
@@ -525,7 +525,7 @@ def test_unchanged_range_does_not_arm(db):
 def test_range_change_does_not_arm_in_compact_mode(db):
     # Compact re-sorts every run — the range change takes effect immediately,
     # no re-grid needed.
-    from teamarr.database.settings.update import update_lifecycle_settings
+    from apex.database.settings.update import update_lifecycle_settings
 
     _set_mode(db, "compact")
     db.commit()
@@ -535,7 +535,7 @@ def test_range_change_does_not_arm_in_compact_mode(db):
 
 
 def test_range_change_does_not_arm_in_manual_mode(db):
-    from teamarr.database.settings.update import update_lifecycle_settings
+    from apex.database.settings.update import update_lifecycle_settings
 
     _set_mode(db, "gap", gap=3)
     db.execute("UPDATE settings SET global_channel_mode = 'manual'")
@@ -548,7 +548,7 @@ def test_range_change_does_not_arm_in_manual_mode(db):
 def test_switch_to_compact_clears_armed_flag(db):
     # An armed re-grid is meaningless in compact mode — leaving the sticky
     # modes drops it so it doesn't linger as stale queued state.
-    from teamarr.database.settings.update import update_channel_numbering_settings
+    from apex.database.settings.update import update_channel_numbering_settings
 
     _set_mode(db, "gap", gap=3)
     db.commit()
@@ -561,7 +561,7 @@ def test_switch_to_compact_clears_armed_flag(db):
 
 def test_switch_between_sticky_modes_keeps_arming(db):
     # gap -> strict is a layout change: it arms (not clears) the re-grid.
-    from teamarr.database.settings.update import update_channel_numbering_settings
+    from apex.database.settings.update import update_channel_numbering_settings
 
     _set_mode(db, "gap", gap=3)
     db.commit()

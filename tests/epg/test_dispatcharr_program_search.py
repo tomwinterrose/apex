@@ -1,17 +1,17 @@
 """Tests for EPGManager.search_programs() + program-search feature detection.
 
-Covers the client surface added in teamarrv2-183.2:
+Covers the client surface added in apexv2-183.2:
 - DispatcharrProgram.from_api parsing (embedded streams/channels, datetimes)
 - supports_program_search() caching + 404 graceful degradation
 - search_programs() param building, pagination, and unsupported short-circuit
 
-The broader matching/lifecycle test matrix lives in teamarrv2-183.7.
+The broader matching/lifecycle test matrix lives in apexv2-183.7.
 """
 
 from unittest.mock import MagicMock
 
-from teamarr.dispatcharr.managers.epg import EPGManager
-from teamarr.dispatcharr.types import DispatcharrProgram
+from apex.dispatcharr.managers.epg import EPGManager
+from apex.dispatcharr.types import DispatcharrProgram
 
 # =============================================================================
 # DispatcharrProgram.from_api
@@ -41,7 +41,7 @@ def test_program_from_api_full():
     assert p.tvg_id == "60048"
     assert p.stream_ids == (919239,)
     assert p.channel_ids == (50,)
-    assert p.is_teamarr is False
+    assert p.is_apex is False
 
 
 def test_program_datetime_parsing():
@@ -59,9 +59,9 @@ def test_program_handles_missing_optional_fields():
     assert p.end_dt is None
 
 
-def test_program_is_teamarr_flag():
-    p = DispatcharrProgram.from_api({**SAMPLE_PROGRAM, "epg_source": "_Vroomarr"})
-    assert p.is_teamarr is True
+def test_program_is_apex_flag():
+    p = DispatcharrProgram.from_api({**SAMPLE_PROGRAM, "epg_source": "_Apex"})
+    assert p.is_apex is True
 
 
 # =============================================================================

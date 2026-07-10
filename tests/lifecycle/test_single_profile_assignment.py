@@ -13,12 +13,12 @@ profile drift sync doesn't immediately flag the new channel.
 
 from unittest.mock import MagicMock, patch
 
-from teamarr.dispatcharr.types import OperationResult
+from apex.dispatcharr.types import OperationResult
 from tests.fakes import FakeEvent
 
 
 def _make_service(channel_manager=None):
-    from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+    from apex.consumers.lifecycle.service import ChannelLifecycleService
 
     sports_service = MagicMock()
     sports_service.get_sport_display_name.return_value = "Baseball"
@@ -84,9 +84,9 @@ class TestCreateChannelProfileSentinel:
             patch.object(
                 service._timing_manager, "calculate_delete_time", return_value=None
             ),
-            patch("teamarr.database.channels.create_managed_channel", return_value=1)
+            patch("apex.database.channels.create_managed_channel", return_value=1)
             as mock_create_db,
-            patch("teamarr.database.channels.add_stream_to_channel"),
+            patch("apex.database.channels.add_stream_to_channel"),
         ):
             result = service._create_channel(
                 conn=MagicMock(),

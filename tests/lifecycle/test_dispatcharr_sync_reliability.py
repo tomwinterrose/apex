@@ -9,9 +9,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from teamarr.consumers.lifecycle.types import StreamProcessResult
-from teamarr.consumers.reconciliation import ChannelReconciler
-from teamarr.dispatcharr.types import DispatcharrChannel, OperationResult
+from apex.consumers.lifecycle.types import StreamProcessResult
+from apex.consumers.reconciliation import ChannelReconciler
+from apex.dispatcharr.types import DispatcharrChannel, OperationResult
 from tests.fakes import FakeEvent, FakeManagedChannel
 
 # =============================================================================
@@ -31,7 +31,7 @@ def _make_dispatcharr_channel(
         uuid="uuid-100",
         name="Test Channel",
         channel_number="5001",
-        tvg_id="vroomarr-event-123",
+        tvg_id="apex-event-123",
         channel_group_id=10,
         logo_id=None,
         logo_url=None,
@@ -45,7 +45,7 @@ def _make_dispatcharr_channel(
 
 def _make_service(channel_manager=None):
     """Create a ChannelLifecycleService with mocked dependencies."""
-    from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+    from apex.consumers.lifecycle.service import ChannelLifecycleService
 
     sports_service = MagicMock()
     sports_service.get_sport_display_name.return_value = "Football"
@@ -139,7 +139,7 @@ class TestBulkSettingsSyncFailure:
             mock_resolver.resolve_channel_group.return_value = 10
 
             # Patch at the source package — the from-import resolves here
-            with patch("teamarr.database.channels.update_managed_channel") as mock_update_db:
+            with patch("apex.database.channels.update_managed_channel") as mock_update_db:
                 service._sync_channel_settings(
                     conn=MagicMock(),
                     existing=existing,
@@ -174,9 +174,9 @@ class TestProfileSentinelUpdateFailure:
         mock_settings.default_channel_profile_ids = None
 
         with (
-            patch("teamarr.database.channels.update_managed_channel") as mock_update_db,
+            patch("apex.database.channels.update_managed_channel") as mock_update_db,
             patch(
-                "teamarr.database.settings.get_dispatcharr_settings",
+                "apex.database.settings.get_dispatcharr_settings",
                 return_value=mock_settings,
             ),
         ):
@@ -207,7 +207,7 @@ class TestLogoAssignmentFailure:
 
         with (
             patch.object(service, "_resolve_logo_url", return_value="http://example.com/logo.png"),
-            patch("teamarr.database.channels.update_managed_channel") as mock_update_db,
+            patch("apex.database.channels.update_managed_channel") as mock_update_db,
         ):
             service._sync_channel_logo(
                 conn=MagicMock(),
@@ -271,9 +271,9 @@ class TestProfileSelfHealing:
         mock_settings.default_channel_profile_ids = None
 
         with (
-            patch("teamarr.database.channels.update_managed_channel"),
+            patch("apex.database.channels.update_managed_channel"),
             patch(
-                "teamarr.database.settings.get_dispatcharr_settings",
+                "apex.database.settings.get_dispatcharr_settings",
                 return_value=mock_settings,
             ),
         ):
@@ -313,9 +313,9 @@ class TestProfileSelfHealing:
         mock_settings.default_channel_profile_ids = [1]
 
         with (
-            patch("teamarr.database.channels.update_managed_channel") as mock_update_db,
+            patch("apex.database.channels.update_managed_channel") as mock_update_db,
             patch(
-                "teamarr.database.settings.get_dispatcharr_settings",
+                "apex.database.settings.get_dispatcharr_settings",
                 return_value=mock_settings,
             ),
         ):
@@ -465,7 +465,7 @@ class TestReconciliationStreamDrift:
             "(id, event_epg_group_id, event_id, event_provider, channel_name, "
             "tvg_id, dispatcharr_channel_id, dispatcharr_uuid, channel_group_id, "
             "channel_number) "
-            "VALUES (1, 1, '123', 'espn', 'Test', 'vroomarr-event-123', "
+            "VALUES (1, 1, '123', 'espn', 'Test', 'apex-event-123', "
             "100, 'uuid-100', 10, '5001')"
         )
         recon_conn.execute(
@@ -508,7 +508,7 @@ class TestReconciliationStreamDrift:
             "(id, event_epg_group_id, event_id, event_provider, channel_name, "
             "tvg_id, dispatcharr_channel_id, dispatcharr_uuid, channel_group_id, "
             "channel_number) "
-            "VALUES (1, 1, '123', 'espn', 'Test', 'vroomarr-event-123', "
+            "VALUES (1, 1, '123', 'espn', 'Test', 'apex-event-123', "
             "100, 'uuid-100', 10, '5001')"
         )
         recon_conn.execute(
@@ -543,7 +543,7 @@ class TestReconciliationProfileDrift:
             "(id, event_epg_group_id, event_id, event_provider, channel_name, "
             "tvg_id, dispatcharr_channel_id, dispatcharr_uuid, channel_group_id, "
             "channel_number, channel_profile_ids) "
-            "VALUES (1, 1, '123', 'espn', 'Test', 'vroomarr-event-123', "
+            "VALUES (1, 1, '123', 'espn', 'Test', 'apex-event-123', "
             "100, 'uuid-100', 10, '5001', '[0]')"
         )
         recon_conn.commit()
@@ -579,7 +579,7 @@ class TestReconciliationDriftAutoFix:
             "(id, event_epg_group_id, event_id, event_provider, channel_name, "
             "tvg_id, dispatcharr_channel_id, dispatcharr_uuid, channel_group_id, "
             "channel_number) "
-            "VALUES (1, 1, '123', 'espn', 'Test', 'vroomarr-event-123', "
+            "VALUES (1, 1, '123', 'espn', 'Test', 'apex-event-123', "
             "100, 'uuid-100', 10, '5001')"
         )
         recon_conn.execute(
@@ -703,7 +703,7 @@ class TestGetChannelExistence:
     failure, so destructive callers don't abandon a live channel."""
 
     def _manager(self, client):
-        from teamarr.dispatcharr.managers.channels import ChannelManager
+        from apex.dispatcharr.managers.channels import ChannelManager
 
         return ChannelManager(client)
 
@@ -751,7 +751,7 @@ def _insert_managed_channel(conn):
         "(id, event_epg_group_id, event_id, event_provider, channel_name, "
         "tvg_id, dispatcharr_channel_id, dispatcharr_uuid, channel_group_id, "
         "channel_number) "
-        "VALUES (1, 1, '123', 'espn', 'Test', 'vroomarr-event-123', "
+        "VALUES (1, 1, '123', 'espn', 'Test', 'apex-event-123', "
         "100, 'uuid-100', 10, '5001')"
     )
     conn.commit()
@@ -767,7 +767,7 @@ class TestReconciliationOrphanTransientSafety:
         reconciler = ChannelReconciler(db_factory=lambda: recon_conn, channel_manager=cm)
         issue = reconciler.verify_channel(1)
         assert issue is not None
-        assert issue.issue_type == "orphan_teamarr"
+        assert issue.issue_type == "orphan_apex"
         assert issue.suggested_action == "mark_deleted"
 
     def test_verify_channel_inconclusive_is_healthy(self, recon_conn):
@@ -782,16 +782,16 @@ class TestReconciliationOrphanTransientSafety:
         cm = MagicMock()
         cm.get_channel_existence.return_value = (None, False)
         reconciler = ChannelReconciler(db_factory=lambda: recon_conn, channel_manager=cm)
-        assert reconciler._detect_orphan_teamarr(recon_conn) == []
+        assert reconciler._detect_orphan_apex(recon_conn) == []
 
     def test_detect_orphan_flags_on_confirmed_404(self, recon_conn):
         _insert_managed_channel(recon_conn)
         cm = MagicMock()
         cm.get_channel_existence.return_value = (None, True)
         reconciler = ChannelReconciler(db_factory=lambda: recon_conn, channel_manager=cm)
-        issues = reconciler._detect_orphan_teamarr(recon_conn)
+        issues = reconciler._detect_orphan_apex(recon_conn)
         assert len(issues) == 1
-        assert issues[0].issue_type == "orphan_teamarr"
+        assert issues[0].issue_type == "orphan_apex"
 
 
 class TestExistingChannelVerificationSafety:
@@ -803,8 +803,8 @@ class TestExistingChannelVerificationSafety:
         service = _make_service(channel_manager=cm)
 
         with (
-            patch("teamarr.database.channels.mark_channel_deleted") as mock_del,
-            patch("teamarr.database.channels.log_channel_history"),
+            patch("apex.database.channels.mark_channel_deleted") as mock_del,
+            patch("apex.database.channels.log_channel_history"),
         ):
             result = service._handle_existing_channel(
                 conn=MagicMock(),
@@ -827,8 +827,8 @@ class TestExistingChannelVerificationSafety:
         service = _make_service(channel_manager=cm)
 
         with (
-            patch("teamarr.database.channels.mark_channel_deleted") as mock_del,
-            patch("teamarr.database.channels.log_channel_history"),
+            patch("apex.database.channels.mark_channel_deleted") as mock_del,
+            patch("apex.database.channels.log_channel_history"),
             patch.object(
                 service, "_sync_channel_settings", return_value=StreamProcessResult()
             ),

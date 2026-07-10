@@ -57,7 +57,7 @@ class TestSubscriptionCRUD:
     """Test get/update for the global subscription."""
 
     def test_get_default_subscription(self, db):
-        from teamarr.database.subscription import get_subscription
+        from apex.database.subscription import get_subscription
 
         sub = get_subscription(db)
         assert sub.id == 1
@@ -66,21 +66,21 @@ class TestSubscriptionCRUD:
         assert sub.soccer_followed_teams is None
 
     def test_update_leagues(self, db):
-        from teamarr.database.subscription import get_subscription, update_subscription
+        from apex.database.subscription import get_subscription, update_subscription
 
         update_subscription(db, leagues=["nhl", "nba", "nfl"])
         sub = get_subscription(db)
         assert sorted(sub.leagues) == ["nba", "nfl", "nhl"]
 
     def test_update_soccer_mode(self, db):
-        from teamarr.database.subscription import get_subscription, update_subscription
+        from apex.database.subscription import get_subscription, update_subscription
 
         update_subscription(db, soccer_mode="all")
         sub = get_subscription(db)
         assert sub.soccer_mode == "all"
 
     def test_update_soccer_followed_teams(self, db):
-        from teamarr.database.subscription import get_subscription, update_subscription
+        from apex.database.subscription import get_subscription, update_subscription
 
         teams = [{"provider": "espn", "team_id": "1", "name": "Arsenal"}]
         update_subscription(db, soccer_mode="teams", soccer_followed_teams=teams)
@@ -90,7 +90,7 @@ class TestSubscriptionCRUD:
         assert sub.soccer_followed_teams[0]["team_id"] == "1"
 
     def test_clear_soccer_mode(self, db):
-        from teamarr.database.subscription import get_subscription, update_subscription
+        from apex.database.subscription import get_subscription, update_subscription
 
         update_subscription(db, soccer_mode="all")
         update_subscription(db, soccer_mode=None)
@@ -102,7 +102,7 @@ class TestSubscriptionTemplateCRUD:
     """Test CRUD for subscription template assignments."""
 
     def test_add_template(self, db):
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_templates,
         )
@@ -115,7 +115,7 @@ class TestSubscriptionTemplateCRUD:
         assert templates[0].leagues is None
 
     def test_add_template_with_sports(self, db):
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_templates,
         )
@@ -126,7 +126,7 @@ class TestSubscriptionTemplateCRUD:
         assert templates[0].sports == ["soccer"]
 
     def test_add_template_with_leagues(self, db):
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_templates,
         )
@@ -137,7 +137,7 @@ class TestSubscriptionTemplateCRUD:
         assert templates[0].leagues == ["ufc", "bellator"]
 
     def test_update_template(self, db):
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template,
             update_subscription_template,
@@ -149,7 +149,7 @@ class TestSubscriptionTemplateCRUD:
         assert t.template_id == 2
 
     def test_delete_template(self, db):
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             delete_subscription_template,
             get_subscription_templates,
@@ -160,12 +160,12 @@ class TestSubscriptionTemplateCRUD:
         assert len(get_subscription_templates(db)) == 0
 
     def test_delete_nonexistent(self, db):
-        from teamarr.database.subscription import delete_subscription_template
+        from apex.database.subscription import delete_subscription_template
 
         assert not delete_subscription_template(db, 999)
 
     def test_get_single_template(self, db):
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template,
         )
@@ -178,7 +178,7 @@ class TestSubscriptionTemplateCRUD:
         assert t.sports == ["hockey"]
 
     def test_get_nonexistent_template(self, db):
-        from teamarr.database.subscription import get_subscription_template
+        from apex.database.subscription import get_subscription_template
 
         assert get_subscription_template(db, 999) is None
 
@@ -188,7 +188,7 @@ class TestTemplateResolution:
 
     def _setup_templates(self, db):
         """Set up a typical template hierarchy for testing."""
-        from teamarr.database.subscription import add_subscription_template
+        from apex.database.subscription import add_subscription_template
 
         # Default (both NULL)
         add_subscription_template(db, template_id=1)
@@ -201,7 +201,7 @@ class TestTemplateResolution:
 
     def test_league_match_wins(self, db):
         """League match is most specific and should win."""
-        from teamarr.database.subscription import get_subscription_template_for_event
+        from apex.database.subscription import get_subscription_template_for_event
 
         self._setup_templates(db)
         result = get_subscription_template_for_event(db, "mma", "ufc")
@@ -209,7 +209,7 @@ class TestTemplateResolution:
 
     def test_sport_match_fallback(self, db):
         """Sport match when no league match."""
-        from teamarr.database.subscription import get_subscription_template_for_event
+        from apex.database.subscription import get_subscription_template_for_event
 
         self._setup_templates(db)
         result = get_subscription_template_for_event(db, "soccer", "eng.1")
@@ -217,7 +217,7 @@ class TestTemplateResolution:
 
     def test_default_fallback(self, db):
         """Default template when no league or sport match."""
-        from teamarr.database.subscription import get_subscription_template_for_event
+        from apex.database.subscription import get_subscription_template_for_event
 
         self._setup_templates(db)
         result = get_subscription_template_for_event(db, "basketball", "nba")
@@ -225,14 +225,14 @@ class TestTemplateResolution:
 
     def test_no_templates(self, db):
         """No templates configured returns None."""
-        from teamarr.database.subscription import get_subscription_template_for_event
+        from apex.database.subscription import get_subscription_template_for_event
 
         result = get_subscription_template_for_event(db, "hockey", "nhl")
         assert result is None
 
     def test_resolution_order(self, db):
         """Test full resolution priority chain."""
-        from teamarr.database.subscription import get_subscription_template_for_event
+        from apex.database.subscription import get_subscription_template_for_event
 
         self._setup_templates(db)
 
@@ -253,7 +253,7 @@ class TestTemplateResolution:
 
     def test_only_default_template(self, db):
         """Single default template matches everything."""
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template_for_event,
         )
@@ -264,7 +264,7 @@ class TestTemplateResolution:
 
     def test_only_sport_template(self, db):
         """Sport-only template matches that sport, returns None for others."""
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template_for_event,
         )

@@ -8,7 +8,7 @@ docs_version: "2.3.1"
 
 # Architecture
 
-Internal design documentation for Teamarr's backend systems.
+Internal design documentation for Apex's backend systems.
 
 | Page | Contents |
 |------|----------|

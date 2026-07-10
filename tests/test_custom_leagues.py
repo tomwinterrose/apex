@@ -10,7 +10,7 @@ import sqlite3
 
 import pytest
 
-from teamarr.services.custom_leagues import (
+from apex.services.custom_leagues import (
     ALLOWED_EVENT_TYPES,
     FUNCTIONAL_SPORTS,
     CustomLeagueGateError,
@@ -26,7 +26,7 @@ from teamarr.services.custom_leagues import (
     require_custom_leagues_enabled,
     run_custom_league_test_fetch,
     supported_custom_league_sports,
-    tsdb_sport_to_teamarr,
+    tsdb_sport_to_apex,
     update_custom_league,
     validate_custom_league_sport,
     validate_event_type,
@@ -93,8 +93,8 @@ def test_functional_sports_includes_matcher_backed_sports():
 
 
 @pytest.mark.skip(
-    reason="Vroomarr's sports table is stripped to racing-only; FUNCTIONAL_SPORTS "
-    "(teamarr's full multi-sport catalog) will never match the seeded set."
+    reason="Apex's sports table is stripped to racing-only; FUNCTIONAL_SPORTS "
+    "(apex's full multi-sport catalog) will never match the seeded set."
 )
 def test_supported_sports_intersects_table_with_functional_set():
     conn = _db()
@@ -157,7 +157,7 @@ def test_validate_event_type():
     ],
 )
 def test_tsdb_sport_mapping(str_sport, expected):
-    assert tsdb_sport_to_teamarr(str_sport) == expected
+    assert tsdb_sport_to_apex(str_sport) == expected
 
 
 def test_cross_check_accepts_match():
@@ -182,14 +182,14 @@ def test_cross_check_rejects_unmapped_sport():
 
 
 @pytest.mark.skip(
-    reason="Vroomarr's sports table is stripped to racing-only; FUNCTIONAL_SPORTS "
-    "(teamarr's full multi-sport catalog) will never match the seeded set."
+    reason="Apex's sports table is stripped to racing-only; FUNCTIONAL_SPORTS "
+    "(apex's full multi-sport catalog) will never match the seeded set."
 )
 def test_capability_endpoint_shape(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
-    from teamarr.api.app import app
-    from teamarr.database import init_db
+    from apex.api.app import app
+    from apex.database import init_db
 
     # Fresh temp DB — the live-app endpoint must not depend on the host's DB.
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
@@ -258,7 +258,7 @@ def test_create_persists_custom_row(monkeypatch):
 
 
 def _sub_leagues(conn):
-    from teamarr.database.subscription import get_subscription
+    from apex.database.subscription import get_subscription
 
     return get_subscription(conn).leagues
 
@@ -276,7 +276,7 @@ def test_create_auto_subscribes_league(monkeypatch):
 
 
 def test_auto_subscribe_preserves_existing_and_no_duplicates(monkeypatch):
-    from teamarr.database.subscription import update_subscription
+    from apex.database.subscription import update_subscription
 
     conn = _premium_db()
     update_subscription(conn, leagues=["eng.1"])
@@ -299,7 +299,7 @@ def test_list_with_state_flags_subscribed(monkeypatch):
 
 def test_list_with_state_flags_unsubscribed_after_user_unsubscribes(monkeypatch):
     """If the user later unchecks the league, the warning flag flips to False."""
-    from teamarr.database.subscription import update_subscription
+    from apex.database.subscription import update_subscription
 
     conn = _premium_db()
     _patch_client(monkeypatch)
@@ -329,10 +329,10 @@ def test_create_defaults_event_card_for_combat_sport(monkeypatch):
 
 
 @pytest.mark.skip(
-    reason="Vroomarr's only built-in leagues are sport='racing', which is a "
+    reason="Apex's only built-in leagues are sport='racing', which is a "
     "FUNCTIONAL_SPORTS placeholder (no matcher) — sport validation always "
     "rejects before the collision guard is reached, so this path is unreachable "
-    "with vroomarr's league set."
+    "with apex's league set."
 )
 def test_create_rejects_collision_with_builtin():
     conn = _premium_db()
@@ -385,7 +385,7 @@ def test_update_only_touches_custom_rows(monkeypatch):
 
 def test_update_rejects_builtin():
     conn = _premium_db()
-    # 'f1' is a built-in seeded by vroomarr's motorsports-only schema.sql.
+    # 'f1' is a built-in seeded by apex's motorsports-only schema.sql.
     # (update checks the protected-builtin guard before sport validation, so
     # this doesn't hit the FUNCTIONAL_SPORTS placeholder rejection for racing.)
     with pytest.raises(CustomLeagueProtectedError):
@@ -424,7 +424,7 @@ def test_delete_removes_custom_row(monkeypatch):
 
 def test_delete_rejects_builtin():
     conn = _premium_db()
-    # 'f1' is a built-in seeded by vroomarr's motorsports-only schema.sql.
+    # 'f1' is a built-in seeded by apex's motorsports-only schema.sql.
     with pytest.raises(CustomLeagueProtectedError):
         delete_custom_league(conn, "f1")
     # Built-in still present.
@@ -536,7 +536,7 @@ class _FakeTSDBClient:
 
 
 def _patch_client(monkeypatch, cls=_FakeTSDBClient):
-    import teamarr.services.custom_leagues as custom_leagues_mod
+    import apex.services.custom_leagues as custom_leagues_mod
 
     monkeypatch.setattr(custom_leagues_mod, "TSDBClient", cls)
 
@@ -624,7 +624,7 @@ def test_test_fetch_no_events_is_ok_not_error(monkeypatch):
 def test_route_exception_mapping(exc, status):
     from fastapi import HTTPException
 
-    from teamarr.api.routes.leagues import _raise_http
+    from apex.api.routes.leagues import _raise_http
 
     with pytest.raises(HTTPException) as caught:
         _raise_http(exc)
@@ -633,7 +633,7 @@ def test_route_exception_mapping(exc, status):
 
 
 def test_route_mapping_reraises_unknown():
-    from teamarr.api.routes.leagues import _raise_http
+    from apex.api.routes.leagues import _raise_http
 
     sentinel = RuntimeError("boom")
     with pytest.raises(RuntimeError):
@@ -660,7 +660,7 @@ def test_create_blocks_when_zero_events(monkeypatch):
 
 
 def test_list_custom_leagues_returns_only_custom(monkeypatch):
-    from teamarr.database.leagues import list_custom_leagues
+    from apex.database.leagues import list_custom_leagues
 
     conn = _premium_db()
     _patch_client(monkeypatch)
@@ -732,7 +732,7 @@ def test_validator_reports_resolution_metadata(monkeypatch):
 
 import contextlib  # noqa: E402
 
-from teamarr.core import Team  # noqa: E402
+from apex.core import Team  # noqa: E402
 
 
 def _shared_factory(conn: sqlite3.Connection):
@@ -777,7 +777,7 @@ def _mk_team(tid: str, name: str, league: str) -> Team:
 
 
 def _patch_provider(monkeypatch, provider):
-    import teamarr.providers as providers_pkg
+    import apex.providers as providers_pkg
 
     monkeypatch.setattr(
         providers_pkg.ProviderRegistry,
@@ -787,7 +787,7 @@ def _patch_provider(monkeypatch, provider):
 
 
 def test_refresh_league_populates_teams_and_counts(monkeypatch):
-    from teamarr.consumers.cache.refresh import CacheRefresher
+    from apex.consumers.cache.refresh import CacheRefresher
 
     conn = _premium_db()
     _patch_client(monkeypatch)
@@ -813,7 +813,7 @@ def test_refresh_league_populates_teams_and_counts(monkeypatch):
 
 
 def test_refresh_league_does_not_wipe_other_leagues(monkeypatch):
-    from teamarr.consumers.cache.refresh import CacheRefresher
+    from apex.consumers.cache.refresh import CacheRefresher
 
     conn = _premium_db()
     _patch_client(monkeypatch)
@@ -842,7 +842,7 @@ def test_refresh_league_does_not_wipe_other_leagues(monkeypatch):
 
 
 def test_refresh_league_unknown_league_fails_gracefully():
-    from teamarr.consumers.cache.refresh import CacheRefresher
+    from apex.consumers.cache.refresh import CacheRefresher
 
     conn = _premium_db()
     result = CacheRefresher(db_factory=_shared_factory(conn)).refresh_league("nope.1")
@@ -851,7 +851,7 @@ def test_refresh_league_unknown_league_fails_gracefully():
 
 
 def test_refresh_league_provider_error_is_graceful(monkeypatch):
-    from teamarr.consumers.cache.refresh import CacheRefresher
+    from apex.consumers.cache.refresh import CacheRefresher
 
     conn = _premium_db()
     _patch_client(monkeypatch)
@@ -884,7 +884,7 @@ def test_refresh_league_unresolvable_mapping_fails(monkeypatch):
     committed but not yet in the in-memory mapping resolves no teams, which must
     surface as success=False (not the misleading success=True, team_count=0).
     """
-    from teamarr.consumers.cache.refresh import CacheRefresher
+    from apex.consumers.cache.refresh import CacheRefresher
 
     conn = _premium_db()
     _patch_client(monkeypatch)
@@ -906,14 +906,14 @@ def test_refresh_league_unresolvable_mapping_fails(monkeypatch):
 
 def test_refresh_custom_league_teams_wrapper_never_raises(monkeypatch):
     """The service wrapper swallows refresher explosions into a result dict."""
-    import teamarr.services.custom_leagues as svc
+    import apex.services.custom_leagues as svc
 
     class _Exploding:
         def refresh_league(self, code):
             raise RuntimeError("kaboom")
 
     monkeypatch.setattr(
-        "teamarr.services.custom_leagues.CacheRefresher", lambda *a, **k: _Exploding()
+        "apex.services.custom_leagues.CacheRefresher", lambda *a, **k: _Exploding()
     )
     out = svc.refresh_custom_league_teams("swe.1")
     assert out["success"] is False

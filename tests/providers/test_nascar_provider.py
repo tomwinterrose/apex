@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from teamarr.providers.nascar.provider import NASCARProvider, _session_code_and_name
+from apex.providers.nascar.provider import NASCARProvider, _session_code_and_name
 
 # ---------------------------------------------------------------------------
 # Unit tests: session code mapping
@@ -411,7 +411,7 @@ def test_fresh_cache_not_refetched():
 
 
 def test_race_format_fields_survive_cache_roundtrip():
-    from teamarr.database.provider_cache import dict_to_event, event_to_dict
+    from apex.database.provider_cache import dict_to_event, event_to_dict
 
     p = _provider_with_data(cup=_CUP_RESPONSE)
     daytona = next(e for e in p._events_by_league["nascar-cup"] if e.id == "5600")

@@ -8,7 +8,7 @@ docs_version: "2.3.0"
 
 # Creating Event Groups
 
-Event groups connect M3U stream sources to Teamarr's sports data. Each group pulls streams from a Dispatcharr M3U account and matches them to real sporting events.
+Event groups connect M3U stream sources to Apex's sports data. Each group pulls streams from a Dispatcharr M3U account and matches them to real sporting events.
 
 ## The Subscription Model
 
@@ -44,7 +44,7 @@ Select which stream group within the M3U account to use, or "All Groups" to incl
 
 | Mode | Description |
 |------|-------------|
-| **Auto** | Teamarr assigns channel numbers sequentially from the configured range |
+| **Auto** | Apex assigns channel numbers sequentially from the configured range |
 | **Manual** | You specify a fixed starting channel number for this group |
 
 ### Channel Group
@@ -75,7 +75,7 @@ Control which streams from the M3U group are processed:
 
 ### Custom Regex Extractors
 
-Override how Teamarr parses stream names. By default, the built-in classifier handles most formats. Use custom regex when your IPTV provider uses unusual naming.
+Override how Apex parses stream names. By default, the built-in classifier handles most formats. Use custom regex when your IPTV provider uses unusual naming.
 
 | Extractor | Purpose | Example Pattern |
 |-----------|---------|-----------------|

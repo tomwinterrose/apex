@@ -77,7 +77,7 @@ export function StartupOverlay() {
       <div className="text-center space-y-4">
         {/* Logo/Title */}
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Vroomarr</h1>
+          <h1 className="text-2xl font-bold">Apex</h1>
           <p className="text-sm text-muted-foreground">Motorsports EPG Generator</p>
         </div>
 

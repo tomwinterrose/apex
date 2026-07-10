@@ -5,7 +5,7 @@ Generation snapshots the run-scoped provider-call counter into
 surfaces through ``ProcessingRun.to_dict`` (what ``GET /stats/runs`` returns).
 """
 
-from teamarr.database.stats import create_run, get_run, save_run
+from apex.database.stats import create_run, get_run, save_run
 
 
 def test_provider_calls_persist_and_surface(db_conn):

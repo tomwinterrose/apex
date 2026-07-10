@@ -1,8 +1,8 @@
-"""Teamarr v2 entry point."""
+"""Apex v2 entry point."""
 import os
 import uvicorn
 
-from teamarr.api.app import app
+from apex.api.app import app
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 9195))

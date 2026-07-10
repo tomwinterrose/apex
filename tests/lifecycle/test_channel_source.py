@@ -1,8 +1,8 @@
-"""Tests for the Dispatcharr-channels EPG source (epic teamarrv2-183.9).
+"""Tests for the Dispatcharr-channels EPG source (epic apexv2-183.9).
 
 Covers EventGroupProcessor._fetch_channel_source_streams: building EPG-match
 candidates from streams curated onto Dispatcharr channels, with the right
-exclusions (Teamarr's own output channels, channels without an active EPG link)
+exclusions (Apex's own output channels, channels without an active EPG link)
 and dedupe (streams already owned by an EPG-match-enabled M3U group).
 """
 
@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from teamarr.database.groups import (
+from apex.database.groups import (
     ensure_channel_source_group,
     get_all_groups,
     get_group,
@@ -53,11 +53,11 @@ def _make_processor(stream_channel_map, epg_data_list, streams, managed, epg_gro
     )
 
     monkeypatch.setattr(
-        "teamarr.database.channels.get_all_managed_channels",
+        "apex.database.channels.get_all_managed_channels",
         lambda conn, include_deleted=False: managed,
     )
     monkeypatch.setattr(
-        "teamarr.database.groups.get_all_groups",
+        "apex.database.groups.get_all_groups",
         lambda conn, include_disabled=False: epg_groups,
     )
     return proc
@@ -80,8 +80,8 @@ def test_builds_candidates_tagged_with_channel_epg_tvgid(monkeypatch):
     assert out[0]["tvg_id"] == "ESPN.us"
 
 
-def test_excludes_teamarr_managed_channels(monkeypatch):
-    # Stream 500 is on Dispatcharr channel 100, which is a Teamarr OUTPUT channel.
+def test_excludes_apex_managed_channels(monkeypatch):
+    # Stream 500 is on Dispatcharr channel 100, which is a Apex OUTPUT channel.
     proc = _make_processor(
         stream_channel_map={500: {"id": 100, "epg_data_id": 1, "name": "X"}},
         epg_data_list=[{"id": 1, "tvg_id": "ESPN.us", "epg_source": 10}],
@@ -164,7 +164,7 @@ def test_scopes_candidates_to_selected_dp_groups(monkeypatch):
     # Only DP group 7 is selected → only its channel's stream is a candidate (ybt.2).
     proc = _two_group_processor(monkeypatch)
     monkeypatch.setattr(
-        "teamarr.database.settings.get_epg_settings",
+        "apex.database.settings.get_epg_settings",
         lambda conn: SimpleNamespace(epg_channel_source_groups=[7]),
     )
     out = proc._fetch_channel_source_streams()
@@ -178,7 +178,7 @@ def test_empty_selection_includes_all_groups(monkeypatch):
     # Back-compat: empty selection = include all DP groups.
     proc = _two_group_processor(monkeypatch)
     monkeypatch.setattr(
-        "teamarr.database.settings.get_epg_settings",
+        "apex.database.settings.get_epg_settings",
         lambda conn: SimpleNamespace(epg_channel_source_groups=[]),
     )
     out = proc._fetch_channel_source_streams()

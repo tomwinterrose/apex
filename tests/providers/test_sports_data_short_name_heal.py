@@ -10,7 +10,7 @@ These tests pin the service-layer self-heal: stale cached lists/dicts
 are dropped and the service re-fetches from the provider.
 """
 
-from teamarr.services.sports_data import _event_dict_is_stale, _team_dict_is_stale
+from apex.services.sports_data import _event_dict_is_stale, _team_dict_is_stale
 
 
 class TestTeamDictStaleness:

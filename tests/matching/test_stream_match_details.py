@@ -6,7 +6,7 @@ user correction). Used by the Managed Channels method popover.
 
 import json
 
-from teamarr.database.channels.streams import get_stream_match_details
+from apex.database.channels.streams import get_stream_match_details
 
 
 def _insert(db_conn, group_id, stream_id, *, event_id="e1", league="nhl",

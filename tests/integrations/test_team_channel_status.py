@@ -7,8 +7,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from teamarr.api.routes import teams as teams_route
-from teamarr.services.team_channel_status import (
+from apex.api.routes import teams as teams_route
+from apex.services.team_channel_status import (
     build_team_channel_status,
     find_next_live_window,
     parse_xmltv_timestamp,
@@ -23,30 +23,30 @@ TEAM = {
     "sport": "baseball",
     "team_name": "Washington Nationals",
     "team_abbrev": "WSH",
-    "channel_id": "teamarr-team-sfv6-test-washington-nationals-20",
+    "channel_id": "apex-team-sfv6-test-washington-nationals-20",
     "active": 1,
 }
 
 
 XMLTV = """<?xml version="1.0"?>
 <tv>
-  <channel id="teamarr-team-sfv6-test-washington-nationals-20">
+  <channel id="apex-team-sfv6-test-washington-nationals-20">
     <display-name>Washington Nationals</display-name>
   </channel>
   <programme start="20260609010000 +0000" stop="20260609050000 +0000"
-      channel="teamarr-team-sfv6-test-washington-nationals-20">
+      channel="apex-team-sfv6-test-washington-nationals-20">
     <title>Past game</title>
     <live/>
   </programme>
   <programme start="20260610014500 +0000" stop="20260610051500 +0000"
-      channel="teamarr-team-sfv6-test-washington-nationals-20">
+      channel="apex-team-sfv6-test-washington-nationals-20">
     <title>MLB Baseball</title>
     <sub-title>Washington Nationals at San Francisco Giants</sub-title>
     <category>Sports Event</category>
     <live/>
   </programme>
   <programme start="20260610194500 +0000" stop="20260610231500 +0000"
-      channel="teamarr-team-sfv6-test-washington-nationals-20">
+      channel="apex-team-sfv6-test-washington-nationals-20">
     <title>MLB Baseball Later</title>
     <category>Sports Event</category>
     <live/>
@@ -61,7 +61,7 @@ class FakeDispatcharrChannel:
     uuid: str = "e5aa42b8-829d-4902-8a31-ce7c668110ca"
     name: str = "[TEST] Washington Nationals"
     channel_number: str = "9900.0"
-    tvg_id: str = "teamarr-team-sfv6-test-washington-nationals-20"
+    tvg_id: str = "apex-team-sfv6-test-washington-nationals-20"
     streams: tuple[int, ...] = (602572, 602573, 602574)
 
 
@@ -79,7 +79,7 @@ def test_parse_xmltv_timestamp_invalid_returns_none():
 def test_find_next_live_window_skips_past_programmes():
     window = find_next_live_window(
         XMLTV,
-        channel_id="teamarr-team-sfv6-test-washington-nationals-20",
+        channel_id="apex-team-sfv6-test-washington-nationals-20",
         now=datetime(2026, 6, 9, 20, 0, tzinfo=UTC),
     )
 
@@ -102,7 +102,7 @@ def test_find_next_live_window_requires_live_signal():
 
 
 def test_find_next_live_window_matches_default_sports_category():
-    """Teamarr's DEFAULT output (category 'Sports', no <live> tag) must be found.
+    """Apex's DEFAULT output (category 'Sports', no <live> tag) must be found.
 
     Default templates set xmltv_categories=['Sports'] and live=False, so requiring
     a <live> tag or 'Sports Event' category would make the endpoint never reach

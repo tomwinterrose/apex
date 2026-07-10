@@ -69,7 +69,7 @@ export function EpgOutputSettings() {
               <Label htmlFor="epg-output-path">Output Path</Label>
               <Input
                 id="epg-output-path"
-                value={epg?.epg_output_path ?? "./teamarr.xml"}
+                value={epg?.epg_output_path ?? "./apex.xml"}
                 onChange={(e) => epg && setEPG({ ...epg, epg_output_path: e.target.value })}
               />
             </div>

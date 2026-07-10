@@ -5,8 +5,8 @@ from time import monotonic, sleep
 
 import httpx
 
-from teamarr.dispatcharr.auth import TokenManager
-from teamarr.dispatcharr.client import DispatcharrClient
+from apex.dispatcharr.auth import TokenManager
+from apex.dispatcharr.client import DispatcharrClient
 
 
 def test_token_authentication_is_serialized_per_session(monkeypatch):

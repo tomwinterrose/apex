@@ -5,7 +5,7 @@ Every league previews against one of three generic, FICTITIOUS shapes
 wrong-league) game — epic gruy .1/.2. The template builder's live preview
 resolves every variable through a precedence chain (curated SAMPLE_DATA ->
 inline registry sample -> category auto-default, see
-teamarr/templates/sample_data.py); because the chain always yields a value, a
+apex/templates/sample_data.py); because the chain always yields a value, a
 newly-registered variable is auto-adopted into previews without a separate edit
 here.
 
@@ -20,17 +20,17 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from teamarr.core import Event, EventStatus, Team
-from teamarr.database.connection import init_db
-from teamarr.services.sports_data import SportsDataService
-from teamarr.templates.sample_data import (
+from apex.core import Event, EventStatus, Team
+from apex.database.connection import init_db
+from apex.services.sports_data import SportsDataService
+from apex.templates.sample_data import (
     AVAILABLE_SPORTS,
     get_all_sample_data,
     get_all_sample_data_for_league,
     resolve_profile_for_league,
     resolve_shape,
 )
-from teamarr.templates.variables import SuffixRules, get_registry
+from apex.templates.variables import SuffixRules, get_registry
 
 # The three generic sample shapes every league resolves to.
 SHAPES = ("team", "combat", "racing")
@@ -118,7 +118,7 @@ def test_live_preview_surfaces_gaps(monkeypatch):
     """In live mode a variable the real event can't fill is surfaced as a gap
     (empty + listed in `gaps`), NOT masked with the fictitious sample, so the
     preview doesn't imply a variable populates when it won't."""
-    from teamarr.api.routes import variables as v
+    from apex.api.routes import variables as v
 
     monkeypatch.setattr(v, "_lookup_league_fields", lambda league: ("basketball", "espn"))
     monkeypatch.setattr(
@@ -145,7 +145,7 @@ def test_live_preview_surfaces_gaps(monkeypatch):
 
 def test_static_preview_has_no_gaps():
     """Without live, every variable is filled by the shape sample (no gaps)."""
-    from teamarr.api.routes import variables as v
+    from apex.api.routes import variables as v
 
     resp = v.get_sample_data(sport="NBA", live=False)
     assert resp["live"] is False
@@ -277,7 +277,7 @@ def test_resolve_shape_covers_combat_and_racing(league_records):
     Guards against a regression where every league collapses onto "team" (which
     would silently break combat/racing previews).
 
-    Vroomarr's schema is motorsports-only (no combat-sport leagues seeded), so
+    Apex's schema is motorsports-only (no combat-sport leagues seeded), so
     only the racing assertion applies here.
     """
     shapes_seen = {

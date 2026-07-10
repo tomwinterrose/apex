@@ -1,17 +1,17 @@
-"""Tests for EPG program-data matching logic (teamarrv2-183.4 pure helpers).
+"""Tests for EPG program-data matching logic (apexv2-183.4 pure helpers).
 
 Grounded in the live-probe findings: teams in sub_title, category gating with
 classic-replay precedence, and graceful fallback when categories are absent.
 """
 
-from teamarr.consumers.matching.classifier import StreamCategory, classify_stream
-from teamarr.consumers.matching.epg_matcher import (
+from apex.consumers.matching.classifier import StreamCategory, classify_stream
+from apex.consumers.matching.epg_matcher import (
     EPGMatchPolicy,
     build_match_input,
     classify_program_policy,
     should_attempt,
 )
-from teamarr.dispatcharr.types import DispatcharrProgram
+from apex.dispatcharr.types import DispatcharrProgram
 
 
 def _prog(title="MLB Baseball", sub_title="Chicago Cubs at St. Louis Cardinals", cats=()):

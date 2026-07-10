@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from teamarr.consumers.matching.team_matcher import TeamMatcher
+from apex.consumers.matching.team_matcher import TeamMatcher
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def test_country_resolution_is_memoized(matcher):
 
 
 def test_alias_log_fires_once_per_name(matcher, caplog):
-    with caplog.at_level(logging.DEBUG, logger="teamarr.consumers.matching.team_matcher"):
+    with caplog.at_level(logging.DEBUG, logger="apex.consumers.matching.team_matcher"):
         for _ in range(10):
             matcher._resolve_alias("EE. UU.", None)
 
@@ -47,7 +47,7 @@ def test_alias_log_fires_once_per_name(matcher, caplog):
 
 def test_self_map_does_not_log(matcher, caplog):
     # "Australia" resolves to itself — no translation happened, so no log.
-    with caplog.at_level(logging.DEBUG, logger="teamarr.consumers.matching.team_matcher"):
+    with caplog.at_level(logging.DEBUG, logger="apex.consumers.matching.team_matcher"):
         matcher._resolve_alias("Australia", None)
 
     assert matcher._resolve_alias("Australia", None) == "australia"

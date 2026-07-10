@@ -12,7 +12,7 @@ Templates define how your EPG content looks - the titles, descriptions, and artw
 
 ## What Templates Do
 
-When Teamarr generates EPG, it uses templates to create programme entries. Templates contain:
+When Apex generates EPG, it uses templates to create programme entries. Templates contain:
 
 - **Title, subtitle, and description formats** using variables like `{team_name}`, `{opponent}`, `{game_time}`
 - **Filler content** for pregame, postgame, and idle periods

@@ -71,7 +71,7 @@ The `DetectionKeywordService` provides centralized pattern-based detection for s
 
 ### 2. Pattern Sources
 
-**Phase 1 (Current):** Built-in patterns from `teamarr/utilities/constants.py` plus user-defined patterns from the `detection_keywords` database table (managed via the Detection Library UI).
+**Phase 1 (Current):** Built-in patterns from `apex/utilities/constants.py` plus user-defined patterns from the `detection_keywords` database table (managed via the Detection Library UI).
 
 - COMBAT_SPORTS_KEYWORDS (100+ keywords)
 - LEAGUE_HINT_PATTERNS (70+ patterns, including multi-league umbrellas)
@@ -133,7 +133,7 @@ Groups can set `skip_builtin_filter=True` to bypass built-in filtering:
 - Unsupported sport detection skipped
 - Custom regex still applies
 
-This allows users to match streams that would normally be filtered (e.g., individual sports like golf or tennis that Teamarr can't schedule-match but user wants in EPG).
+This allows users to match streams that would normally be filtered (e.g., individual sports like golf or tennis that Apex can't schedule-match but user wants in EPG).
 
 ## Multi-Sport Hints
 
@@ -167,7 +167,7 @@ When a stream matches a multi-league hint, the matcher tries events from all lis
 ## Usage Examples
 
 ```python
-from teamarr.services.detection_keywords import DetectionKeywordService
+from apex.services.detection_keywords import DetectionKeywordService
 
 # Check if stream is combat sports
 if DetectionKeywordService.is_combat_sport("UFC 315: Main Card"):
@@ -203,9 +203,9 @@ stats = DetectionKeywordService.warm_cache()
 
 | Component | Location |
 |-----------|----------|
-| Service | `teamarr/services/detection_keywords.py` |
-| Classifier | `teamarr/consumers/matching/classifier.py` |
-| Stream Filter | `teamarr/services/stream_filter.py` |
-| Constants | `teamarr/utilities/constants.py` |
-| DB CRUD | `teamarr/database/detection_keywords.py` |
-| API Routes | `teamarr/api/routes/detection_keywords.py` |
+| Service | `apex/services/detection_keywords.py` |
+| Classifier | `apex/consumers/matching/classifier.py` |
+| Stream Filter | `apex/services/stream_filter.py` |
+| Constants | `apex/utilities/constants.py` |
+| DB CRUD | `apex/database/detection_keywords.py` |
+| API Routes | `apex/api/routes/detection_keywords.py` |

@@ -35,7 +35,7 @@ RUN uv sync --frozen --no-install-project --no-cache
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy application code
-COPY teamarr/ ./teamarr/
+COPY apex/ ./apex/
 COPY app.py ./
 
 # Copy built frontend

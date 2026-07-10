@@ -88,5 +88,5 @@ All five playoff codes (`F`/`D`/`L`/`W`/`P`) map to `postseason` so consumer log
 
 | File | Purpose |
 |------|---------|
-| `teamarr/providers/mlbstats/provider.py` | MLBStatsProvider class |
-| `teamarr/providers/mlbstats/client.py` | HTTP client |
+| `apex/providers/mlbstats/provider.py` | MLBStatsProvider class |
+| `apex/providers/mlbstats/client.py` | HTTP client |

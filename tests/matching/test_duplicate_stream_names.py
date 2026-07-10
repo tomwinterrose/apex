@@ -9,7 +9,7 @@ attached to the consolidated channel. Lookup must be ID-first.
 
 from types import SimpleNamespace
 
-from teamarr.consumers.matching.matcher import BatchMatchResult, MatchedStreamResult
+from apex.consumers.matching.matcher import BatchMatchResult, MatchedStreamResult
 from tests.fakes import make_bare_processor
 
 

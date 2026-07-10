@@ -5,7 +5,7 @@ import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-from teamarr.consumers.scheduler import CronScheduler, SubTaskScheduler
+from apex.consumers.scheduler import CronScheduler, SubTaskScheduler
 
 
 class TestSubTaskScheduler:
@@ -57,7 +57,7 @@ class TestSubTaskScheduler:
             def now(cls, tz=None):
                 return datetime.now(tz) + offset
 
-        with patch("teamarr.consumers.scheduler.datetime", ShiftedDateTime):
+        with patch("apex.consumers.scheduler.datetime", ShiftedDateTime):
             sub = SubTaskScheduler("test", fired.set, "* * * * *")
             sub.start()
             try:
@@ -148,7 +148,7 @@ class TestCronSchedulerSubTasks:
         mock_ctx.__exit__ = MagicMock(return_value=False)
         sched._db_factory.return_value = mock_ctx
 
-        with patch("teamarr.database.settings.get_backup_settings", return_value=mock_settings):
+        with patch("apex.database.settings.get_backup_settings", return_value=mock_settings):
             sched.restart_sub_task("backup")
 
         # Old sub-scheduler should have been stopped
@@ -177,7 +177,7 @@ class TestTaskBackupSimplified:
         mock_ctx.__exit__ = MagicMock(return_value=False)
         sched._db_factory.return_value = mock_ctx
 
-        with patch("teamarr.database.settings.get_backup_settings", return_value=mock_settings):
+        with patch("apex.database.settings.get_backup_settings", return_value=mock_settings):
             result = sched._task_backup()
 
         assert result["skipped"] is True
@@ -215,11 +215,11 @@ class TestTaskBackupSimplified:
 
         with (
             patch(
-                "teamarr.database.settings.get_backup_settings",
+                "apex.database.settings.get_backup_settings",
                 return_value=mock_settings,
             ),
             patch(
-                "teamarr.services.backup_service.create_backup_service",
+                "apex.services.backup_service.create_backup_service",
                 return_value=mock_service,
             ),
         ):

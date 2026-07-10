@@ -1,4 +1,4 @@
-"""Tests for unsubscribed-league channel cleanup (teamarrv2-psoi).
+"""Tests for unsubscribed-league channel cleanup (apexv2-psoi).
 
 When followed leagues change while the source group stays enabled, channels for
 dropped leagues must be deleted on the next run (immediate-removal policy). The
@@ -15,9 +15,9 @@ from tests.fakes import FakeChannel, FakeGroup
 
 @pytest.fixture
 def processor():
-    from teamarr.consumers.event_group_processor import EventGroupProcessor
+    from apex.consumers.event_group_processor import EventGroupProcessor
 
-    with patch("teamarr.consumers.event_group_processor.processor.create_default_service"):
+    with patch("apex.consumers.event_group_processor.processor.create_default_service"):
         proc = EventGroupProcessor(db_factory=MagicMock())
     return proc
 
@@ -29,11 +29,11 @@ def _run(processor, groups, channels, subscribed):
     processor._resolve_subscription_leagues = MagicMock(return_value=subscribed)
     with (
         patch(
-            "teamarr.consumers.event_group_processor.processor.get_all_groups",
+            "apex.consumers.event_group_processor.processor.get_all_groups",
             return_value=groups,
         ),
         patch(
-            "teamarr.database.channels.get_all_managed_channels",
+            "apex.database.channels.get_all_managed_channels",
             return_value=channels,
         ),
     ):
@@ -108,11 +108,11 @@ def test_disabled_group_not_counted_toward_subscription(processor):
     channels = [FakeChannel(id=10, league="nba"), FakeChannel(id=11, league="nhl")]
     with (
         patch(
-            "teamarr.consumers.event_group_processor.processor.get_all_groups",
+            "apex.consumers.event_group_processor.processor.get_all_groups",
             return_value=groups,
         ),
         patch(
-            "teamarr.database.channels.get_all_managed_channels",
+            "apex.database.channels.get_all_managed_channels",
             return_value=channels,
         ),
     ):

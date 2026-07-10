@@ -5,14 +5,14 @@ Pins how completed-game scores attach to schedule entries. The join is on
 schedule_game_overrides.game_number) rather than parsed city names, because:
 
   * baseball doubleheaders share date + both team names but have distinct
-    game numbers (regression: bead teamarrv2-hh7 / PR #204), and
+    game numbers (regression: bead apexv2-hh7 / PR #204), and
   * the name key silently mismatches teams whose first word != schedule city
     override (e.g. "Chatham-Kent Barnstormers" vs override "chatham").
 
 Field shapes mirror the live Supabase schema confirmed via read-only probe.
 """
 
-from teamarr.providers.supabase.client import SupabaseLeagueClient
+from apex.providers.supabase.client import SupabaseLeagueClient
 
 
 def _client() -> SupabaseLeagueClient:

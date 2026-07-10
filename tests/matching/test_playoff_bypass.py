@@ -1,6 +1,6 @@
 """Tests for canonical season_type producers and playoff bypass filtering.
 
-Covers the full producer/consumer chain fixed in bead teamarrv2-sua (#197):
+Covers the full producer/consumer chain fixed in bead apexv2-sua (#197):
 
 - ESPN scoreboard path parses season slug/type to canonical values
 - ESPN summary path (get_event) passes season through so refresh doesn't wipe it
@@ -17,7 +17,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from teamarr.core import (
+from apex.core import (
     SEASON_OFFSEASON,
     SEASON_POSTSEASON,
     SEASON_PRESEASON,
@@ -26,16 +26,16 @@ from teamarr.core import (
     EventStatus,
     Team,
 )
-from teamarr.providers.espn.provider import ESPNProvider
-from teamarr.providers.hockeytech.provider import HockeyTechProvider
-from teamarr.providers.mlbstats.provider import MLBStatsProvider
-from teamarr.providers.tsdb.provider import TSDBProvider
-from teamarr.templates.context import (
+from apex.providers.espn.provider import ESPNProvider
+from apex.providers.hockeytech.provider import HockeyTechProvider
+from apex.providers.mlbstats.provider import MLBStatsProvider
+from apex.providers.tsdb.provider import TSDBProvider
+from apex.templates.context import (
     GameContext,
     TeamChannelContext,
     TemplateContext,
 )
-from teamarr.templates.variables.playoffs import (
+from apex.templates.variables.playoffs import (
     extract_is_playoff,
     extract_is_preseason,
     extract_is_regular_season,
@@ -402,7 +402,7 @@ class TestFilterBypassUsesCanonicalConstant:
     """
 
     def test_constant_is_imported_and_used(self) -> None:
-        from teamarr.consumers import event_group_processor
+        from apex.consumers import event_group_processor
 
         assert event_group_processor.SEASON_POSTSEASON == SEASON_POSTSEASON
 

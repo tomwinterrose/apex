@@ -10,7 +10,7 @@ short_name empty as stale and returns None, forcing the matcher to
 re-fetch and re-cache with proper data on the next pass.
 """
 
-from teamarr.consumers.matching.team_matcher import TeamMatcher
+from apex.consumers.matching.team_matcher import TeamMatcher
 
 
 def _make_cached(home_short: str, away_short: str) -> dict:

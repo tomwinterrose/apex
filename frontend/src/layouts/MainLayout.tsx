@@ -37,7 +37,7 @@ async function fetchHealth(): Promise<{ status: string; version: string }> {
   return resp.json()
 }
 
-const VISITED_STEPS_KEY = "teamarr.visitedSteps"
+const VISITED_STEPS_KEY = "apex.visitedSteps"
 
 /**
  * First-run guidance: the step numbers (0 Settings, 1–5) act as a "do this
@@ -131,7 +131,7 @@ export function MainLayout() {
             <Link to="/" className="flex items-center gap-2">
               <img
                 src="/logo.svg"
-                alt="Vroomarr"
+                alt="Apex"
                 className="h-7 w-7"
                 onError={(e) => {
                   e.currentTarget.style.display = "none"
@@ -139,7 +139,7 @@ export function MainLayout() {
               />
               <div className="flex flex-col">
                 <span className="font-semibold leading-tight">
-                  Vroomarr
+                  Apex
                 </span>
                 <span className="text-[10px] text-muted-foreground leading-tight hidden sm:block">
                   Motorsports EPG Generator for Dispatcharr
@@ -373,7 +373,7 @@ export function MainLayout() {
               }}
             />
             <span className="flex items-center gap-1.5">
-              Vroomarr - Dynamic Motorsports EPG Generator for Dispatcharr | {version}
+              Apex - Dynamic Motorsports EPG Generator for Dispatcharr | {version}
               {updateAvailable && (
                 <span className="flex h-2 w-2 rounded-full bg-amber-500" title="Update available" />
               )}
@@ -381,7 +381,7 @@ export function MainLayout() {
             </span>
           </div>
           <div className="mt-1 text-center text-xs italic text-muted-foreground">
-            Jesse, Vroomarr will never support curling 🥌
+            Jesse, Apex will never support curling 🥌
           </div>
         </div>
       </footer>

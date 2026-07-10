@@ -111,7 +111,7 @@ Output includes: extracted team names, detected league/sport hints, card segment
 
 ### EPG-title matching (`matching/epg_matcher.py`, `matching/epg_index.py`)
 
-For static-named linear channels (ESPN, NBA1) the stream name is unmatchable, but the Dispatcharr EPG guide carries the real matchup. When a group opts in (epic `teamarrv2-183`), `StreamMatcher` augments name matching with EPG-title matching:
+For static-named linear channels (ESPN, NBA1) the stream name is unmatchable, but the Dispatcharr EPG guide carries the real matchup. When a group opts in (epic `apexv2-183`), `StreamMatcher` augments name matching with EPG-title matching:
 
 1. **Resolve** — `matching/epg_resolver.py` maps each candidate stream's `tvg_id` to the EPG source's program `tvg_id`. A raw M3U `tvg_id` (`FoxSports1.us`) is a different namespace from the program `tvg_id` (the EPG-source channel id, e.g. `82547`), so a cascade bridges them, most-authoritative first: **(a) direct** (the stream `tvg_id` already is an EPGData `tvg_id`); **(b) channel** (the stream is on a Dispatcharr channel whose curated `epg_data_id` resolves to an EPGData row); **(c) name** (strict, unambiguous normalized name match — skips ambiguous names so `ESPN` never resolves to `ESPN2`). This does **not** require streams to be pre-built into channels.
 2. **Index** — `EPGProgramIndex` (built once per run, scoped to the resolved `tvg_id`s) fetches programs by the resolved program `tvg_id` but keys results by the stream `tvg_id`; provides `programs_for(tvg_id)` and `is_linear(tvg_id)`.
@@ -160,7 +160,7 @@ Resolves `{sport}` and `{league}` wildcards in channel group and profile names:
 
 | Issue Type | Description | Action |
 |------------|-------------|--------|
-| `orphan_teamarr` | DB record but no Dispatcharr channel | Delete DB record |
+| `orphan_apex` | DB record but no Dispatcharr channel | Delete DB record |
 | `orphan_dispatcharr` | Dispatcharr channel but no DB record | Link or ignore |
 | `duplicate` | Multiple channels for same event | Merge or keep first |
 | `drift` | Settings mismatch (name, streams, profiles) | Update Dispatcharr |
@@ -177,7 +177,7 @@ Runs automatically at the end of each generation. Issues have severity levels (c
 
 ### Time-windowed stream membership (`managed_channel_streams.attach_at`/`detach_at`)
 
-For EPG-matched linear streams (epic `teamarrv2-183.5`), membership in a channel is **time-windowed** so one linear stream (ESPN, NBA1) rotates across many event channels, attached to each only near game time. This is **separate** from channel create/delete timing — the channel exists for its whole lifecycle (filler + upcoming guide); only the *stream* swaps in and out.
+For EPG-matched linear streams (epic `apexv2-183.5`), membership in a channel is **time-windowed** so one linear stream (ESPN, NBA1) rotates across many event channels, attached to each only near game time. This is **separate** from channel create/delete timing — the channel exists for its whole lifecycle (filler + upcoming guide); only the *stream* swaps in and out.
 
 - `compute_stream_window()` (`lifecycle/timing.py`) derives `attach_at`/`detach_at` from the matched EPG program slot ± the global `epg_stream_pre/post_buffer_minutes` settings, **clipped** to the neighbouring programs on that `tvg_id` so a back-to-back game's buffer never bleeds into the adjacent slot.
 - A membership row is **active in Dispatcharr now** when `removed_at IS NULL AND (attach_at IS NULL OR attach_at ≤ now < detach_at)`. `NULL` window = full-life membership (dedicated/name-matched streams — unchanged behavior). `get_ordered_stream_ids()` enforces this; it's the set pushed to Dispatcharr.

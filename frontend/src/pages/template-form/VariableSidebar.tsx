@@ -13,7 +13,7 @@ function leagueAbbrev(l: CachedLeague): string {
 }
 
 // Local storage key for recently used variables
-const RECENTLY_USED_KEY = "teamarr_recently_used_vars"
+const RECENTLY_USED_KEY = "apex_recently_used_vars"
 
 function getRecentlyUsed(): string[] {
   try {

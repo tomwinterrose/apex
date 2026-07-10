@@ -8,7 +8,7 @@ docs_version: "2.3.1"
 
 # Database
 
-Teamarr uses SQLite in WAL mode for all persistent storage. The database file (`teamarr.db`) is the single source of truth for configuration, teams, templates, event groups, channel state, and run history.
+Apex uses SQLite in WAL mode for all persistent storage. The database file (`apex.db`) is the single source of truth for configuration, teams, templates, event groups, channel state, and run history.
 
 ## Connection Settings
 
@@ -25,7 +25,7 @@ row_factory = sqlite3.Row   (dict-like access)
 
 **Current version: 69** (stored in `settings.schema_version`)
 
-Schema changes use the [checkpoint + incremental migration](migrations) system. The schema source of truth is `teamarr/database/schema.sql`.
+Schema changes use the [checkpoint + incremental migration](migrations) system. The schema source of truth is `apex/database/schema.sql`.
 
 ## Core Tables
 
@@ -106,7 +106,7 @@ The settings table is a single row with 67 columns, organized into these groups:
 
 ## Database Modules
 
-19 Python modules in `teamarr/database/`:
+19 Python modules in `apex/database/`:
 
 | Module | Purpose |
 |--------|---------|
@@ -144,14 +144,14 @@ The settings table is a single row with 67 columns, organized into these groups:
 The allocator respects:
 - Global range (`channel_range_start` to `channel_range_end`)
 - Per-league starting numbers (manual mode)
-- External occupied numbers (non-Teamarr channels in Dispatcharr)
+- External occupied numbers (non-Apex channels in Dispatcharr)
 - Sort scope (`per_group` or `global`)
 
 ## File Locations
 
 | File | Purpose |
 |------|---------|
-| `teamarr/database/schema.sql` | Authoritative schema for fresh installs |
-| `teamarr/database/connection.py` | Connection manager, migrations |
-| `teamarr/database/settings.py` | Settings with typed dataclasses |
-| `teamarr/database/channel_numbers.py` | Numbering algorithm |
+| `apex/database/schema.sql` | Authoritative schema for fresh installs |
+| `apex/database/connection.py` | Connection manager, migrations |
+| `apex/database/settings.py` | Settings with typed dataclasses |
+| `apex/database/channel_numbers.py` | Numbering algorithm |

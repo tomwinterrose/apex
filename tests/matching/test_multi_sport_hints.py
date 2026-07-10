@@ -4,8 +4,8 @@ Validates that sport hints can map to multiple sports for ambiguous terms
 like 'football' (Soccer + American Football) and 'main card' (MMA + Boxing).
 """
 
-from teamarr.consumers.matching.team_matcher import _sport_hint_matches
-from teamarr.services.detection_keywords import _parse_sport_target
+from apex.consumers.matching.team_matcher import _sport_hint_matches
+from apex.services.detection_keywords import _parse_sport_target
 
 # ---------------------------------------------------------------------------
 # _parse_sport_target
@@ -84,7 +84,7 @@ class TestBuiltinPatternOrdering:
 
     def test_bare_football_returns_multi(self):
         """Bare 'football' should return both Soccer and Football."""
-        from teamarr.services.detection_keywords import DetectionKeywordService
+        from apex.services.detection_keywords import DetectionKeywordService
 
         DetectionKeywordService.invalidate_cache()
         result = DetectionKeywordService.detect_sport("English Football League")
@@ -93,49 +93,49 @@ class TestBuiltinPatternOrdering:
         assert "Football" in result
 
     def test_nfl_returns_football_only(self):
-        from teamarr.services.detection_keywords import DetectionKeywordService
+        from apex.services.detection_keywords import DetectionKeywordService
 
         DetectionKeywordService.invalidate_cache()
         result = DetectionKeywordService.detect_sport("NFL: Chiefs vs Bills")
         assert result == "Football"
 
     def test_american_football_returns_football_only(self):
-        from teamarr.services.detection_keywords import DetectionKeywordService
+        from apex.services.detection_keywords import DetectionKeywordService
 
         DetectionKeywordService.invalidate_cache()
         result = DetectionKeywordService.detect_sport("American Football: Patriots vs Eagles")
         assert result == "Football"
 
     def test_college_football_returns_football_only(self):
-        from teamarr.services.detection_keywords import DetectionKeywordService
+        from apex.services.detection_keywords import DetectionKeywordService
 
         DetectionKeywordService.invalidate_cache()
         result = DetectionKeywordService.detect_sport("College Football: Ohio State vs Michigan")
         assert result == "Football"
 
     def test_soccer_returns_soccer_only(self):
-        from teamarr.services.detection_keywords import DetectionKeywordService
+        from apex.services.detection_keywords import DetectionKeywordService
 
         DetectionKeywordService.invalidate_cache()
         result = DetectionKeywordService.detect_sport("Soccer: LAFC vs Galaxy")
         assert result == "Soccer"
 
     def test_ncaaf_returns_football_only(self):
-        from teamarr.services.detection_keywords import DetectionKeywordService
+        from apex.services.detection_keywords import DetectionKeywordService
 
         DetectionKeywordService.invalidate_cache()
         result = DetectionKeywordService.detect_sport("NCAAF: Alabama vs Auburn")
         assert result == "Football"
 
     def test_hockey_unaffected(self):
-        from teamarr.services.detection_keywords import DetectionKeywordService
+        from apex.services.detection_keywords import DetectionKeywordService
 
         DetectionKeywordService.invalidate_cache()
         result = DetectionKeywordService.detect_sport("Ice Hockey: Bruins vs Rangers")
         assert result == "Hockey"
 
     def test_basketball_unaffected(self):
-        from teamarr.services.detection_keywords import DetectionKeywordService
+        from apex.services.detection_keywords import DetectionKeywordService
 
         DetectionKeywordService.invalidate_cache()
         result = DetectionKeywordService.detect_sport("Basketball: Lakers vs Celtics")
@@ -152,7 +152,7 @@ class TestStreamFilterMultiSport:
 
     def test_football_not_filtered_as_unsupported(self):
         """'football' matches Soccer + Football, both supported — not filtered."""
-        from teamarr.services.stream_filter import UNSUPPORTED_SPORTS, detect_sport_hint
+        from apex.services.stream_filter import UNSUPPORTED_SPORTS, detect_sport_hint
 
         sport = detect_sport_hint("English Football League: Arsenal vs Chelsea")
         # Multi-sport hint — should NOT be filtered since Soccer and Football are supported

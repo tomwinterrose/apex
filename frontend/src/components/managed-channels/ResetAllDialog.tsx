@@ -31,8 +31,8 @@ interface ResetAllDialogProps {
 }
 
 /**
- * Reset All modal — previews and deletes every Vroomarr-created channel
- * (vroomarr-event-* tvg_id) from Dispatcharr.
+ * Reset All modal — previews and deletes every Apex-created channel
+ * (apex-event-* tvg_id) from Dispatcharr.
  *
  * The content mounts only while open, fetching the preview fresh each time.
  */
@@ -97,10 +97,10 @@ function ResetAllContent({
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-5 w-5" />
-          Reset All Vroomarr Channels
+          Reset All Apex Channels
         </DialogTitle>
         <DialogDescription>
-          This will delete ALL Vroomarr-created channels from Dispatcharr
+          This will delete ALL Apex-created channels from Dispatcharr
         </DialogDescription>
       </DialogHeader>
 
@@ -109,7 +109,7 @@ function ResetAllContent({
           <Spinner />
         ) : resetChannels.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No Vroomarr channels found in Dispatcharr.
+            No Apex channels found in Dispatcharr.
           </div>
         ) : (
           <div className="space-y-4">
@@ -117,7 +117,7 @@ function ResetAllContent({
               <p className="text-sm text-muted-foreground">
                 This will permanently delete {resetChannels.length} channel
                 {resetChannels.length > 1 ? "s" : ""} from Dispatcharr that have{" "}
-                <code className="text-xs bg-muted px-1 py-0.5 rounded">vroomarr-event-*</code>{" "}
+                <code className="text-xs bg-muted px-1 py-0.5 rounded">apex-event-*</code>{" "}
                 tvg_id.
               </p>
             </Alert>

@@ -8,7 +8,7 @@ docs_version: "2.3.0"
 
 # Template Variables
 
-Templates use variables enclosed in curly braces that get replaced with real data when EPG is generated. Teamarr provides 207 variables across 17 categories.
+Templates use variables enclosed in curly braces that get replaced with real data when EPG is generated. Apex provides 207 variables across 17 categories.
 
 ## Team vs Event Templates
 

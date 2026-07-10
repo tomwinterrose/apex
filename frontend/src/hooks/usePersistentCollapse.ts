@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
  * namespace; falls back to in-memory state if localStorage is unavailable.
  */
 export function usePersistentCollapse(key: string | null | undefined, defaultCollapsed = true) {
-  const storageKey = key ? `teamarr.collapse.${key}` : null
+  const storageKey = key ? `apex.collapse.${key}` : null
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (!storageKey) return defaultCollapsed

@@ -19,7 +19,7 @@ const RESET_PRESETS: { label: string; cron: string }[] = [
 ]
 
 /**
- * Scheduled Channel Reset — periodically purges all Vroomarr channels in
+ * Scheduled Channel Reset — periodically purges all Apex channels in
  * Dispatcharr so the media server's guide refresh picks up fresh logos/data.
  * A media-server-agnostic workaround (originally documented for Jellyfin stale
  * logos); lives in the Media Servers tab as of the v2.7.0 IA overhaul.
@@ -64,7 +64,7 @@ export function ScheduledChannelResetCard() {
       description={
         <>
           For users experiencing stale channel logos in their media server. Schedule a periodic
-          purge of all Vroomarr channels before your media server&apos;s guide refresh.
+          purge of all Apex channels before your media server&apos;s guide refresh.
           Leave disabled if you&apos;re not having issues.
         </>
       }

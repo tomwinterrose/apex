@@ -1,4 +1,4 @@
-title: Teamarr
+title: Apex
 description: Sports EPG Generator for Dispatcharr
 remote_theme: just-the-docs/just-the-docs
 
@@ -6,14 +6,14 @@ remote_theme: just-the-docs/just-the-docs
 plugins:
   - jekyll-remote-theme
 
-url: https://pharaoh-labs.github.io
-baseurl: /teamarr
+url: https://tomwinterrose.github.io
+baseurl: /apex
 
 # Navigation
 nav_sort: case_insensitive
 nav_external_links:
   - title: GitHub
-    url: https://github.com/Pharaoh-Labs/teamarr
+    url: https://github.com/tomwinterrose/apex
 
 # Search
 search_enabled: true
@@ -23,10 +23,10 @@ search:
 
 # Aux links (top right)
 aux_links:
-  Teamarr GitHub: https://github.com/Pharaoh-Labs/teamarr
+  Apex GitHub: https://github.com/tomwinterrose/apex
 
 # Footer
-footer_content: "Teamarr - Sports EPG Generator for Dispatcharr"
+footer_content: "Apex - Sports EPG Generator for Dispatcharr"
 
 # Color scheme
 color_scheme: dark
