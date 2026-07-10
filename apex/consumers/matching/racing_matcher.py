@@ -21,7 +21,11 @@ from zoneinfo import ZoneInfo
 
 from rapidfuzz import fuzz
 
-from apex.consumers.matching.classifier import ClassifiedStream, StreamCategory
+from apex.consumers.matching.classifier import (
+    ClassifiedStream,
+    StreamCategory,
+    has_racing_text_evidence,
+)
 from apex.consumers.matching.result import (
     FailedReason,
     FilteredReason,
@@ -41,7 +45,13 @@ RACING_MATCH_THRESHOLD = 70
 
 # Minimum fuzzy match score required even in the "single event covering the
 # date" case, to reject streams with no real connection to racing at all
-# (e.g. cycling/other-sport streams misclassified as racing events).
+# (e.g. cycling/other-sport streams misclassified as racing events). Live
+# false-positive: generic venue words ("Speedway") inflate token_set_ratio
+# well past this on their own — a FIM Speedway GP (motorcycle) stream
+# scored 53 against "Atlanta Motor Speedway" (a NASCAR venue) purely on
+# that shared word, with zero actual connection to NASCAR. The threshold
+# alone was never a reliable bar; has_racing_text_evidence below is the
+# real gate now.
 SINGLE_EVENT_SANITY_THRESHOLD = 50
 
 # EPG anchored matching (mirrors team_matcher.ANCHOR_MATCH_TOLERANCE_SECONDS):
@@ -323,9 +333,19 @@ class RacingMatcher:
         # happening this weekend" purely by elimination. The country score
         # counts here: with one covering event there's no ambiguity for it
         # to create.
+        #
+        # The score alone isn't a reliable bar: generic venue words
+        # ("Speedway", "International Circuit", ...) can clear it on a
+        # single shared token with zero real connection to the event, so a
+        # stream also needs actual textual evidence it's the right racing
+        # series before Strategy 1 is allowed to fire.
         if len(events) == 1 and best_score < SINGLE_EVENT_SANITY_THRESHOLD:
             best_score = max(best_score, country_scores.get(events[0].id, 0))
-        if len(events) == 1 and best_score >= SINGLE_EVENT_SANITY_THRESHOLD:
+        if (
+            len(events) == 1
+            and best_score >= SINGLE_EVENT_SANITY_THRESHOLD
+            and has_racing_text_evidence(ctx.stream_name)
+        ):
             event = events[0]
             logger.debug(
                 "[MATCHED] racing stream=%s -> %s (method=direct, single event, score=%d)",

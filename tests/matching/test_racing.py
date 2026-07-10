@@ -181,6 +181,31 @@ def test_single_event_country_passes_sanity_check():
     assert out.is_matched and out.event.id == "a"
 
 
+def test_single_event_generic_venue_word_alone_does_not_match():
+    # Live false positive: an unrelated motorcycle "FIM Speedway GP" stream
+    # scored 53 (>= SINGLE_EVENT_SANITY_THRESHOLD) against NASCAR's
+    # "Atlanta Motor Speedway" purely on the shared generic word "Speedway"
+    # — zero real connection to NASCAR or this event. A bare score clearing
+    # the sanity threshold must not be enough without actual text evidence
+    # the stream names the right racing series.
+    a = _event("a", "Focused Health 250", circuit="Atlanta Motor Speedway")
+    out = _matcher()._match_to_event(
+        _ctx("HBO UK 047 | Malilla - FIM Speedway GP | Round 6 | Malilla"),
+        [a], "nascar-xfinity",
+    )
+    assert not out.is_matched
+
+
+def test_single_event_matches_with_text_evidence_even_at_sanity_threshold():
+    # Positive counterpart: a real NASCAR stream must still match via
+    # Strategy 1 when it clears the sanity threshold AND names the series.
+    a = _event("a", "Focused Health 250", circuit="Atlanta Motor Speedway")
+    out = _matcher()._match_to_event(
+        _ctx("NASCAR ORAP Series: Focused Health 250"), [a], "nascar-xfinity"
+    )
+    assert out.is_matched and out.event.id == "a"
+
+
 # ---------------------------------------------------------------------------
 # RacingMatcher anchor-time gating (EPG path) — follow-up to apexv2-w42k
 #
@@ -378,6 +403,26 @@ class TestSessionCategoryFromStreamName:
 
     def test_plain_channel_name_has_no_hint(self):
         assert _session_category_from_stream_name("ESPN 2 (US)") is None
+
+    def test_trailing_qualifying_keyword(self):
+        # NASCAR/TSN+ convention: session type as a trailing word in the
+        # label, not the whole label (unlike tsdb/STAN's bare "Qualifying").
+        assert _session_category_from_stream_name(
+            "CA (TSN+ 021) | NASCAR Cup Series Qualifying: Quaker State 400 (2026-07-11 16:30:00)"
+        ) == "qualifying"
+        assert _session_category_from_stream_name(
+            "CA (TSN+ 015) | 2026 NASCAR ORAP Series Qualifying: Focused Health 250 (2026-07-11 11:00:00)"
+        ) == "qualifying"
+
+    def test_no_trailing_keyword_has_no_hint(self):
+        # A label ending in descriptive text (not a session word) must not
+        # trip the trailing fallback.
+        assert _session_category_from_stream_name(
+            "2026 NASCAR CRAFTSMAN Truck Series: LiUNA 150 (2026-07-11 13:00:00)"
+        ) is None
+        assert _session_category_from_stream_name(
+            "CA (TSN+ 036) | NASCAR Cup Series On_Board Camera: Quaker State 400 (2026-07-12 19:00:00)"
+        ) is None
 
 
 class TestSessionInCategory:

@@ -137,6 +137,48 @@ _EXACT_SESSION_LABELS = {
     "warmup": "warmup",
 }
 
+# Fallback for labels shaped "<Series/event description> <SessionType>"
+# (session type as a TRAILING word, not the whole label) — e.g. NASCAR/TSN+
+# streams named "NASCAR Cup Series Qualifying" or "2026 NASCAR ORAP Series
+# Qualifying", where the tsdb-style anchored regexes above (which require
+# the label to BE the session type) don't match. Anchored at the end of the
+# label (not a bare substring search), so "Pre-Race Show" still counts as
+# naming the race but "Racecourse Network" or similar would not accidentally
+# trail-match "race" mid-word.
+_TRAILING_FP_RE = re.compile(r"(?:free\s*practice|practice|fp)\s*(\d)\s*$", re.IGNORECASE)
+_TRAILING_SPRINT_QUALIFYING_RE = re.compile(r"\bsprint\s*qualifying\s*$", re.IGNORECASE)
+_TRAILING_HYPERPOLE_RE = re.compile(r"\bhyperpole\s*$", re.IGNORECASE)
+_TRAILING_WARMUP_RE = re.compile(r"\bwarm[\s-]?up\s*$", re.IGNORECASE)
+_TRAILING_QUALIFYING_RE = re.compile(r"\bqualifying\s*$", re.IGNORECASE)
+_TRAILING_SPRINT_RACE_RE = re.compile(r"\bsprint\s*race\s*$", re.IGNORECASE)
+_TRAILING_RACE_RE = re.compile(r"\brace\s*$", re.IGNORECASE)
+_TRAILING_SPRINT_RE = re.compile(r"\bsprint\s*$", re.IGNORECASE)
+
+
+def _session_category_from_trailing_keyword(label: str) -> str | None:
+    """Session category for a label ending in a session-type WORD.
+
+    Checked in specificity order so e.g. "Sprint Qualifying" resolves to
+    sprint_qualifying rather than the bare "qualifying" suffix match.
+    """
+    if m := _TRAILING_FP_RE.search(label):
+        return f"fp{m.group(1)}"
+    if _TRAILING_SPRINT_QUALIFYING_RE.search(label):
+        return "sprint_qualifying"
+    if _TRAILING_HYPERPOLE_RE.search(label):
+        return "hyperpole"
+    if _TRAILING_WARMUP_RE.search(label):
+        return "warmup"
+    if _TRAILING_QUALIFYING_RE.search(label):
+        return "qualifying"
+    if _TRAILING_SPRINT_RACE_RE.search(label):
+        return "sprint"
+    if _TRAILING_RACE_RE.search(label):
+        return "race"
+    if _TRAILING_SPRINT_RE.search(label):
+        return "sprint"
+    return None
+
 
 def _isolate_stream_session_label(stream_name: str) -> str:
     """Best-effort isolation of a session-label field from a stream name.
@@ -186,7 +228,11 @@ def _session_category_from_stream_name(stream_name: str) -> str | None:
         return "hyperpole"
     if _PROLOGUE_RE.search(label):
         return "prologue"
-    return None
+    # Fallback: the label isn't ENTIRELY a session type, but ENDS in one —
+    # e.g. NASCAR/TSN+'s "NASCAR Cup Series Qualifying" or "2026 NASCAR ORAP
+    # Series Qualifying", vs. tsdb/STAN's convention of the label being just
+    # "Qualifying" on its own (handled above).
+    return _session_category_from_trailing_keyword(label)
 
 
 def _session_in_category(session_code: str, category: str) -> bool:
