@@ -4,10 +4,6 @@ services:
     ports:
       - "9198:9198"
     volumes:
-      # Migrating an existing vroomarr deployment? Compose treats a volume
-      # name change as a NEW empty volume, which would orphan your existing
-      # database — point this at your prior volume name (e.g.
-      # "vroomarr-data") instead of changing it here.
       - apex-data:/app/data
     environment:
       - DISPATCHARR_URL=${DISPATCHARR_URL:-}
