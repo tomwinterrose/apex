@@ -194,9 +194,10 @@ class StreamMatching:
             return None
 
         # Direct/name matching must only use the ACTIVE imported EPG (curated
-        # channel links are trusted regardless). _Teamarr (our own output) is
-        # excluded so we never resolve a stream to our generated guide.
+        # channel links are trusted regardless). Our own generated source is
+        # excluded so we never resolve a stream to our own generated guide.
         active_source_ids = self._active_epg_source_ids()
+        own_source_name = self._own_epg_source_name()
         resolution, _stats = resolve_program_tvg_ids(
             streams, epg_data_list, stream_channels, active_source_ids=active_source_ids
         )
@@ -211,7 +212,8 @@ class StreamMatching:
         try:
             index = (
                 EPGProgramIndex.build(
-                    self._dispatcharr_client.epg, resolution, window_start, window_end
+                    self._dispatcharr_client.epg, resolution, window_start, window_end,
+                    own_source_name=own_source_name,
                 )
                 if resolution
                 else EPGProgramIndex({})
@@ -239,8 +241,24 @@ class StreamMatching:
         )
         return index
 
+    def _own_epg_source_id(self) -> "int | None":
+        """The app's OWN configured EPG-source id (``dispatcharr_epg_id`` setting).
+
+        Resolved at runtime rather than assumed, since it's the only reliable
+        way to identify our own generated source — its NAME is whatever the
+        user (or an older default) set it to, not necessarily "_Vroomarr".
+        """
+        try:
+            from teamarr.database.channels.settings_helpers import get_dispatcharr_settings
+
+            with self._db_factory() as conn:
+                return get_dispatcharr_settings(conn).get("epg_id")
+        except Exception as e:
+            logger.debug("[EPG-MATCH] could not resolve own epg_id setting: %s", e)
+            return None
+
     def _active_epg_source_ids(self) -> set[int] | None:
-        """Enabled EPG-source ids for name/direct matching (excludes _Teamarr).
+        """Enabled EPG-source ids for name/direct matching (excludes our own).
 
         Returns None on failure so the resolver falls back to the full catalog
         rather than matching nothing.
@@ -252,12 +270,33 @@ class StreamMatching:
         except Exception as e:
             logger.debug("[EPG-MATCH] active-source lookup failed: %s", e)
             return None
+        own_id = self._own_epg_source_id()
         active = {
             s["id"]
             for s in sources
-            if s.get("id") is not None and s.get("is_active") and s.get("name") != "_Vroomarr"
+            if s.get("id") is not None and s.get("is_active") and s.get("id") != own_id
         }
         return active or None
+
+    def _own_epg_source_name(self) -> "str | None":
+        """The live NAME of our own EPG source, resolved via its configured id.
+
+        Used to filter our own generated programs out of EPGProgramIndex —
+        a prior hardcoded ``"_Vroomarr"`` name check (DispatcharrProgram.is_teamarr)
+        silently never matched installs whose source isn't literally named
+        that (e.g. the default "Vroomarr", no underscore), so our own
+        generated guide was never actually excluded and could be matched
+        right back against itself.
+        """
+        own_id = self._own_epg_source_id()
+        if own_id is None:
+            return None
+        try:
+            source = self._dispatcharr_client.epg.get_source(own_id)
+        except Exception as e:
+            logger.debug("[EPG-MATCH] could not resolve own epg source name: %s", e)
+            return None
+        return source.name if source else None
 
     def _add_xtream_epg_fallback(
         self, index, group, streams, window_start, window_end, cache_hours: int = 24

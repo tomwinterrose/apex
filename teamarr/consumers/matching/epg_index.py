@@ -35,10 +35,10 @@ class EPGProgramIndex:
     Construct via :meth:`build` once per generation run, then call
     :meth:`lookup` to get the programs overlapping a given event window.
 
-    Programs from Teamarr's own generated EPG source ("_Vroomarr") are excluded
-    by default so we never match streams against our own output. Programs
-    without parseable start/end times are kept in the index but never returned
-    by :meth:`lookup` (they cannot be windowed).
+    Programs from our own generated EPG source are excluded so we never match
+    streams against our own output — see ``own_source_name`` on :meth:`build`.
+    Programs without parseable start/end times are kept in the index but
+    never returned by :meth:`lookup` (they cannot be windowed).
     """
 
     def __init__(self, programs_by_tvg: dict[str, list[DispatcharrProgram]]):
@@ -54,6 +54,7 @@ class EPGProgramIndex:
         window_start: datetime,
         window_end: datetime,
         exclude_teamarr: bool = True,
+        own_source_name: "str | None" = None,
         page_size: int = 500,
     ) -> "EPGProgramIndex":
         """Fetch and index programs per candidate stream over a time window.
@@ -71,7 +72,17 @@ class EPGProgramIndex:
             tvg_id_resolution: Map of stream ``tvg_id`` -> EPG-source ``tvg_id``.
             window_start: Start of the window to index (inclusive-ish).
             window_end: End of the window to index.
-            exclude_teamarr: Drop programs from our own "_Vroomarr" EPG source.
+            exclude_teamarr: Drop programs from our own generated EPG source.
+            own_source_name: The CONFIGURED name of our own EPG source in
+                Dispatcharr (resolved at runtime from the app's own
+                ``dispatcharr_epg_id`` setting, not assumed) — matched against
+                ``DispatcharrProgram.epg_source`` in addition to the legacy
+                ``is_teamarr`` check (``epg_source == "_Vroomarr"``), which
+                silently never matches installs whose source isn't literally
+                named that (e.g. the default "Vroomarr", no underscore).
+                Without this, our own generated programs are treated as real
+                external guide data and can be matched right back against
+                themselves.
             page_size: Page size passed to the search endpoint.
 
         Returns:
@@ -106,7 +117,10 @@ class EPGProgramIndex:
                 page_size=page_size,
             )
             if exclude_teamarr:
-                programs = [p for p in programs if not p.is_teamarr]
+                programs = [
+                    p for p in programs
+                    if not p.is_teamarr and not (own_source_name and p.epg_source == own_source_name)
+                ]
             if not programs:
                 continue
             programs.sort(key=lambda p: p.start_time or "")

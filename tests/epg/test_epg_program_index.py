@@ -77,6 +77,27 @@ def test_build_excludes_teamarr_programs():
     assert idx.lookup("espn", base, base + timedelta(hours=1))[0].id == 1
 
 
+def test_build_excludes_own_source_by_resolved_name():
+    # Live-bug regression: is_teamarr hardcodes epg_source == "_Vroomarr",
+    # which never matches an install whose source is named "Vroomarr" (the
+    # actual default, no underscore) or anything else a user renamed it to.
+    # own_source_name is resolved at runtime from the app's own configured
+    # dispatcharr_epg_id and must be honored independently of is_teamarr, so
+    # our own generated programs never get matched back against themselves.
+    mgr = _epg_mgr()
+    base = datetime(2026, 6, 1, 18, tzinfo=UTC)
+    mgr.search_programs.return_value = [
+        _prog(1, "espn", base, base + timedelta(hours=2), source="ext"),
+        _prog(2, "espn", base, base + timedelta(hours=2), source="Vroomarr"),
+    ]
+
+    idx = EPGProgramIndex.build(
+        mgr, {"espn": "espn"}, base, base + timedelta(days=1), own_source_name="Vroomarr",
+    )
+    assert idx.program_count() == 1
+    assert idx.lookup("espn", base, base + timedelta(hours=1))[0].id == 1
+
+
 def test_build_unsupported_endpoint_returns_empty():
     mgr = _epg_mgr(supported=False)
     base = datetime(2026, 6, 1, tzinfo=UTC)
