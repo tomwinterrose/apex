@@ -263,7 +263,7 @@ def test_epg_racing_fallback_nascar_at_city(monkeypatch):
     monkeypatch.setattr(m, "_route_to_outcomes",
         lambda c, sid, td, anchor_dt=None: [MatchOutcome.failed(None)])
     monkeypatch.setattr(m, "_match_racing_event",
-        lambda classified, sid, td: _racing_matched_outcome())
+        lambda classified, sid, td, anchor_dt=None: _racing_matched_outcome())
     monkeypatch.setattr(m, "_outcome_to_result", lambda outcome, **kw: outcome)
 
     out = m._match_via_epg(100, "ESPN", "espn", date(2026, 6, 1))
@@ -290,7 +290,7 @@ def test_epg_racing_fallback_f1_team_only(monkeypatch):
     monkeypatch.setattr(
         m,
         "_match_racing_event",
-        lambda classified, sid, td: MatchOutcome.matched(
+        lambda classified, sid, td, anchor_dt=None: MatchOutcome.matched(
             MatchMethod.FUZZY, event=race_ev, confidence=0.9
         ),
     )
@@ -355,7 +355,7 @@ def test_epg_racing_fallback_uses_racing_classification_in_result(monkeypatch):
     monkeypatch.setattr(m, "_route_to_outcomes",
         lambda c, sid, td, anchor_dt=None: [MatchOutcome.failed(None)])
     monkeypatch.setattr(m, "_match_racing_event",
-        lambda classified, sid, td: _racing_matched_outcome())
+        lambda classified, sid, td, anchor_dt=None: _racing_matched_outcome())
     captured = {}
     def capture_result(outcome, *, stream_id, stream_name, classified):
         captured["category"] = classified.category
@@ -385,7 +385,7 @@ def test_epg_racing_fallback_requires_text_evidence(monkeypatch):
         lambda c, sid, td, anchor_dt=None: [MatchOutcome.failed(None)])
     racing_called = []
     monkeypatch.setattr(m, "_match_racing_event",
-        lambda classified, sid, td: racing_called.append(1) or _racing_matched_outcome())
+        lambda classified, sid, td, anchor_dt=None: racing_called.append(1) or _racing_matched_outcome())
     monkeypatch.setattr(m, "_outcome_to_result", lambda outcome, **kw: outcome)
 
     out = m._match_via_epg(100, "US: Smithsonian Channel", "espn", date(2026, 6, 1))
@@ -408,7 +408,7 @@ def test_epg_primary_racing_requires_text_evidence_in_racing_only_group(monkeypa
     m = _bare_matcher(index, team_streams_enabled=True, racing_leagues=("wec",))
     racing_called = []
     monkeypatch.setattr(m, "_match_racing_event",
-        lambda classified, sid, td: racing_called.append(1) or _racing_matched_outcome())
+        lambda classified, sid, td, anchor_dt=None: racing_called.append(1) or _racing_matched_outcome())
     monkeypatch.setattr(m, "_outcome_to_result", lambda outcome, **kw: outcome)
 
     out = m._match_via_epg(100, "PBS Affiliate", "pbs", date(2026, 6, 1))
@@ -424,7 +424,7 @@ def test_epg_primary_racing_matches_wec_title_with_series_name(monkeypatch):
     index = EPGProgramIndex({"wec-chan": [prog]})
     m = _bare_matcher(index, team_streams_enabled=True, racing_leagues=("wec",))
     monkeypatch.setattr(m, "_match_racing_event",
-        lambda classified, sid, td: _racing_matched_outcome())
+        lambda classified, sid, td, anchor_dt=None: _racing_matched_outcome())
     monkeypatch.setattr(m, "_outcome_to_result", lambda outcome, **kw: outcome)
 
     out = m._match_via_epg(100, "WEC Channel", "wec-chan", date(2026, 6, 1))

@@ -665,7 +665,9 @@ class StreamMatcher:
         if classified.category == StreamCategory.EVENT_CARD:
             return [self._match_event_card(classified, stream_id, target_date)]
         if classified.category == StreamCategory.RACING_EVENT:
-            return [self._match_racing_event(classified, stream_id, target_date)]
+            return [
+                self._match_racing_event(classified, stream_id, target_date, anchor_dt=anchor_dt)
+            ]
         if classified.category == StreamCategory.TENNIS_MATCH:
             return self._match_tennis_event(classified, stream_id, target_date)
         if classified.category == StreamCategory.TEAM_ONLY:
@@ -816,7 +818,8 @@ class StreamMatcher:
                         has_racing_text_evidence(epg_input)
                     ):
                         racing_outcome = self._match_racing_event(
-                            racing_classified, stream_id, target_date
+                            racing_classified, stream_id, target_date,
+                            anchor_dt=program.start_dt,
                         )
                         if racing_outcome.is_matched:
                             matched_pairs.append((racing_outcome, racing_classified))
@@ -1021,6 +1024,7 @@ class StreamMatcher:
         classified: ClassifiedStream,
         stream_id: int,
         target_date: date,
+        anchor_dt: "datetime | None" = None,
     ) -> MatchOutcome:
         """Match a racing stream (F1, NASCAR, IndyCar, MotoGP, ...)."""
         # Find the racing leagues in our search leagues. The "event" type is
@@ -1052,6 +1056,8 @@ class StreamMatcher:
                 stream_id=stream_id,
                 generation=self._generation,
                 user_tz=self._user_tz,
+                anchor_dt=anchor_dt,
+                sport_durations=self._sport_durations,
             )
             if outcome.is_matched:
                 return outcome

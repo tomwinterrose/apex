@@ -7,7 +7,7 @@ regression-prone path (cf. #157): a team-sport stream that leaks into a
 racing-dominant group must NOT be hijacked as a race.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
@@ -175,6 +175,71 @@ def test_single_event_country_passes_sanity_check():
     a = _event("a", "Viva 250", country="Mexico")
     out = _matcher()._match_to_event(_ctx("NASCAR at Mexico"), [a], "nascar-cup")
     assert out.is_matched and out.event.id == "a"
+
+
+# ---------------------------------------------------------------------------
+# RacingMatcher anchor-time gating (EPG path) — follow-up to teamarrv2-w42k
+#
+# The EPG text-evidence gate (has_racing_text_evidence in classifier.py) only
+# proves a programme NAMES a racing series — it says nothing about whether the
+# programme is actually airing that series right now. A filler/stub EPG
+# programme (e.g. "Coming up: WEC Racing starting Friday at 9:00 AM",
+# duplicated verbatim across unrelated channels with no real listings behind
+# them) passes that gate yet has no real broadcast tied to it. _covers_instant
+# closes that gap by requiring a session to actually be airing (within
+# tolerance) at the programme's own broadcast instant, not just somewhere in
+# the race weekend's calendar span.
+# ---------------------------------------------------------------------------
+
+
+def _racing_session(code, start_time):
+    return SimpleNamespace(code=code, start_time=start_time)
+
+
+def _wec_event_with_sessions(sessions):
+    return SimpleNamespace(
+        id="tsdb_wec_2026_4",
+        name="6 Hours of São Paulo",
+        short_name="6 Hours of São Paulo",
+        circuit_name="Autódromo José Carlos Pace",
+        venue=SimpleNamespace(country="Brazil"),
+        league="wec",
+        sessions=sessions,
+        start_time=sessions[0].start_time,
+    )
+
+
+def test_covers_instant_true_near_a_real_session():
+    race_start = datetime(2026, 7, 12, 14, 0, tzinfo=UTC)
+    event = _wec_event_with_sessions([_racing_session("race", race_start)])
+    matcher = _matcher()
+    assert matcher._covers_instant(event, race_start, None)
+    assert matcher._covers_instant(event, race_start - timedelta(minutes=30), None)
+
+
+def test_covers_instant_false_for_filler_programme_hours_away():
+    # Reproduces a live false positive: a filler "Coming up: WEC Racing..."
+    # programme airing 5+ hours from any real session must not bind to the
+    # event just because it shares the calendar date.
+    race_start = datetime(2026, 7, 12, 14, 0, tzinfo=UTC)
+    event = _wec_event_with_sessions([_racing_session("race", race_start)])
+    filler_programme_time = race_start - timedelta(hours=5, minutes=26)
+    matcher = _matcher()
+    assert not matcher._covers_instant(event, filler_programme_time, None)
+
+
+def test_covers_instant_checks_every_session_in_the_weekend():
+    # A multi-session weekend: an instant near ANY session (not just the
+    # first) counts as covered.
+    fp1 = datetime(2026, 7, 10, 9, 0, tzinfo=UTC)
+    race = datetime(2026, 7, 12, 14, 0, tzinfo=UTC)
+    event = _wec_event_with_sessions(
+        [_racing_session("fp1", fp1), _racing_session("race", race)]
+    )
+    matcher = _matcher()
+    assert matcher._covers_instant(event, fp1, None)
+    assert matcher._covers_instant(event, race, None)
+    assert not matcher._covers_instant(event, fp1 + timedelta(hours=6), None)
 
 
 # ---------------------------------------------------------------------------
