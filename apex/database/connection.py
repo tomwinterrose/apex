@@ -20,6 +20,39 @@ DEFAULT_DB_PATH = Path(__file__).parent.parent.parent / "data" / "apex.db"
 # Schema file location
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
+# Database filenames from before the project's renames (teamarr -> vroomarr ->
+# apex). Checked once at startup (see _migrate_legacy_db_file) so an existing
+# install's real data isn't silently orphaned by init_db() creating a fresh
+# empty database at the new default path.
+_LEGACY_DB_NAMES = ("teamarr.db", "vroomarr.db")
+
+
+def _migrate_legacy_db_file(path: Path) -> None:
+    """Rename a pre-rebrand database file to the current default path.
+
+    One-time migration: if nothing exists yet at `path` but a legacy-named
+    database sits alongside it, rename it (plus WAL/SHM sidecars) into place.
+    Without this, upgrading to a build with a renamed DEFAULT_DB_PATH would
+    silently start every existing install with a brand-new empty database.
+    """
+    if path.exists():
+        return
+    for legacy_name in _LEGACY_DB_NAMES:
+        legacy_path = path.parent / legacy_name
+        if not legacy_path.exists():
+            continue
+        logger.warning(
+            "[MIGRATE] Found pre-rebrand database '%s'; renaming to '%s'",
+            legacy_path,
+            path,
+        )
+        legacy_path.rename(path)
+        for suffix in ("-wal", "-shm"):
+            sidecar = legacy_path.with_name(legacy_path.name + suffix)
+            if sidecar.exists():
+                sidecar.rename(path.with_name(path.name + suffix))
+        return
+
 
 def resolve_db_path(db_path: Path | str | None) -> Path:
     """Explicit argument > DATABASE_PATH env var > repo default.
@@ -98,6 +131,7 @@ def init_db(db_path: Path | str | None = None) -> None:
         RuntimeError: If database file exists but is not a valid V2 database
     """
     path = resolve_db_path(db_path)
+    _migrate_legacy_db_file(path)
     schema_sql = SCHEMA_PATH.read_text()
 
     try:
