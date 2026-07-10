@@ -7,10 +7,10 @@ and the catch_all fallback rule), plus the team-term builder and key parsing.
 
 import pytest
 
-from teamarr.database.channels.types import ManagedChannelStream
-from teamarr.database.connection import get_connection, get_db, init_db
-from teamarr.database.settings.types import StreamOrderingRule
-from teamarr.services.stream_ordering import (
+from apex.database.channels.types import ManagedChannelStream
+from apex.database.connection import get_connection, get_db, init_db
+from apex.database.settings.types import StreamOrderingRule
+from apex.services.stream_ordering import (
     NO_MATCH_PRIORITY,
     StreamOrderingService,
 )

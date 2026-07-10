@@ -11,7 +11,7 @@ import time
 import httpx
 import pytest
 
-from teamarr.channelsdvr.client import ChannelsDVRClient
+from apex.channelsdvr.client import ChannelsDVRClient
 
 
 class TestUrlBuilding:

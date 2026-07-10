@@ -8,11 +8,11 @@ docs_version: "2.3.1"
 
 # Data Providers
 
-Teamarr uses a priority-based provider system to fetch sports data. When resolving events or teams for a league, the provider with the lowest priority number is tried first.
+Apex uses a priority-based provider system to fetch sports data. When resolving events or teams for a league, the provider with the lowest priority number is tried first.
 
 ## Provider Registry
 
-All providers implement the `SportsProvider` interface and are registered in `teamarr/providers/__init__.py` with a priority, factory function, and enabled flag.
+All providers implement the `SportsProvider` interface and are registered in `apex/providers/__init__.py` with a priority, factory function, and enabled flag.
 
 ```
 Request for league data
@@ -39,7 +39,7 @@ Request for league data
 
 ## SportsProvider Interface
 
-All providers implement these methods (defined in `teamarr/core/interfaces.py`):
+All providers implement these methods (defined in `apex/core/interfaces.py`):
 
 | Method | Required | Description |
 |--------|----------|-------------|

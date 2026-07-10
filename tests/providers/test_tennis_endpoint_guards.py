@@ -10,9 +10,9 @@ provider, and the base-client rule that deterministic 4xx is not retried.
 
 import httpx
 
-from teamarr.providers import base_client
-from teamarr.providers.base_client import BaseHTTPClient
-from teamarr.providers.espn.provider import ESPNProvider
+from apex.providers import base_client
+from apex.providers.base_client import BaseHTTPClient
+from apex.providers.espn.provider import ESPNProvider
 
 
 class _StubClient(BaseHTTPClient):

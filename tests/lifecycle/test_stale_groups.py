@@ -9,7 +9,7 @@ import contextlib
 import sqlite3
 from types import SimpleNamespace
 
-from teamarr.consumers.reconciliation import detect_stale_groups
+from apex.consumers.reconciliation import detect_stale_groups
 from tests.helpers import SCHEMA_PATH
 
 SCHEMA = SCHEMA_PATH
@@ -46,7 +46,7 @@ def _patch_dispatcharr(monkeypatch, groups):
 
     `groups` items may be ints (auto-named) or (id, name) tuples.
     """
-    import teamarr.consumers.reconciliation as reconciliation
+    import apex.consumers.reconciliation as reconciliation
 
     def mk(item):
         if isinstance(item, tuple):
@@ -108,7 +108,7 @@ def test_list_groups_error_flags_nothing(monkeypatch):
     conn = _db()
     _add_group(conn, "Gone Group", 99)
 
-    import teamarr.consumers.reconciliation as reconciliation
+    import apex.consumers.reconciliation as reconciliation
 
     def boom():
         raise RuntimeError("dispatcharr down")

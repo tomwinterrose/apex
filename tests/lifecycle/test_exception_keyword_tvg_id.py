@@ -1,4 +1,4 @@
-"""Tests for exception keyword EPG uniqueness (teamarrv2-a6b).
+"""Tests for exception keyword EPG uniqueness (apexv2-a6b).
 
 Verifies that:
 1. generate_event_tvg_id produces unique IDs per exception keyword
@@ -11,9 +11,9 @@ from unittest.mock import patch
 
 import pytest
 
-from teamarr.consumers.lifecycle.types import generate_event_tvg_id, slugify_keyword
-from teamarr.templates.context import TeamChannelContext, TemplateContext
-from teamarr.templates.resolver import TemplateResolver
+from apex.consumers.lifecycle.types import generate_event_tvg_id, slugify_keyword
+from apex.templates.context import TeamChannelContext, TemplateContext
+from apex.templates.resolver import TemplateResolver
 
 # =============================================================================
 # SLUGIFY KEYWORD
@@ -67,26 +67,26 @@ class TestGenerateEventTvgId:
     def test_basic_no_keyword(self):
         assert (
             generate_event_tvg_id("401547679", "espn", None, None, None)
-            == "vroomarr-event-401547679"
+            == "apex-event-401547679"
         )
 
     def test_with_segment(self):
         result = generate_event_tvg_id("401547679", "espn", "prelims", None, None)
-        assert result == "vroomarr-event-401547679-prelims"
+        assert result == "apex-event-401547679-prelims"
 
     def test_with_keyword(self):
         result = generate_event_tvg_id("401547679", "espn", None, "Spanish", None)
-        assert result == "vroomarr-event-401547679-spanish"
+        assert result == "apex-event-401547679-spanish"
 
     def test_with_segment_and_keyword(self):
         result = generate_event_tvg_id("401547679", "espn", "main_card", "French", None)
-        assert result == "vroomarr-event-401547679-main_card-french"
+        assert result == "apex-event-401547679-main_card-french"
 
     def test_none_keyword_same_as_no_keyword(self):
-        assert generate_event_tvg_id("123", "espn", None, None, None) == "vroomarr-event-123"
+        assert generate_event_tvg_id("123", "espn", None, None, None) == "apex-event-123"
 
     def test_empty_keyword_same_as_no_keyword(self):
-        assert generate_event_tvg_id("123", "espn", None, "", None) == "vroomarr-event-123"
+        assert generate_event_tvg_id("123", "espn", None, "", None) == "apex-event-123"
 
     def test_different_keywords_produce_different_ids(self):
         id_spanish = generate_event_tvg_id("123", "espn", None, "Spanish", None)
@@ -98,11 +98,11 @@ class TestGenerateEventTvgId:
 
     def test_multi_word_keyword(self):
         result = generate_event_tvg_id("123", "espn", None, "4K HDR", None)
-        assert result == "vroomarr-event-123-4k-hdr"
+        assert result == "apex-event-123-4k-hdr"
 
     def test_with_feed_team_id(self):
         result = generate_event_tvg_id("401547679", "espn", None, None, "23")
-        assert result == "vroomarr-event-401547679-feed-23"
+        assert result == "apex-event-401547679-feed-23"
 
     def test_feed_team_id_distinct_from_no_feed(self):
         # Same event, three feed scenarios — must produce three distinct tvg_ids
@@ -112,23 +112,23 @@ class TestGenerateEventTvgId:
         home_feed = generate_event_tvg_id("401", "espn", None, None, "10")
         away_feed = generate_event_tvg_id("401", "espn", None, None, "20")
         assert no_feed != home_feed != away_feed != no_feed
-        assert no_feed == "vroomarr-event-401"
-        assert home_feed == "vroomarr-event-401-feed-10"
-        assert away_feed == "vroomarr-event-401-feed-20"
+        assert no_feed == "apex-event-401"
+        assert home_feed == "apex-event-401-feed-10"
+        assert away_feed == "apex-event-401-feed-20"
 
     def test_feed_team_id_combines_with_segment_and_keyword(self):
         result = generate_event_tvg_id("401", "espn", "prelims", "Spanish", "23")
-        assert result == "vroomarr-event-401-prelims-spanish-feed-23"
+        assert result == "apex-event-401-prelims-spanish-feed-23"
 
     def test_none_feed_team_id_unchanged(self):
         # Backwards compat: no feed_team_id matches the pre-fix tvg_id format
-        assert generate_event_tvg_id("123", "espn", None, None, None) == "vroomarr-event-123"
+        assert generate_event_tvg_id("123", "espn", None, None, None) == "apex-event-123"
 
     def test_feed_team_id_slugified(self):
         # Provider IDs are usually numeric but the function accepts strings —
         # if a provider ever uses a non-slug-safe ID, slugify guards it.
         result = generate_event_tvg_id("123", "espn", None, None, "ABC.42")
-        assert result == "vroomarr-event-123-feed-abc-42"
+        assert result == "apex-event-123-feed-abc-42"
 
     def test_missing_args_is_typeerror(self):
         # Required-args discipline: catching the v2.4.4-style miss at write time.

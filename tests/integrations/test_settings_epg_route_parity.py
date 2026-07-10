@@ -1,6 +1,6 @@
 """Regression: combined GET /settings must serialize the full EPG section.
 
-Bug teamarrv2-335: the combined `/settings` handler built EPGSettingsModel
+Bug apexv2-335: the combined `/settings` handler built EPGSettingsModel
 without `epg_xtream_fallback_enabled`, so it silently fell back to the model
 default (False) regardless of the stored value. The Settings page loads its EPG
 state from the combined endpoint, so the saved XC-fallback toggle reverted on
@@ -15,8 +15,8 @@ stored value differs from the model default is caught.
 import pytest
 from fastapi.testclient import TestClient
 
-from teamarr.api.app import app
-from teamarr.database import init_db
+from apex.api.app import app
+from apex.database import init_db
 
 client = TestClient(app)
 

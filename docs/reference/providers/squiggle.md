@@ -67,8 +67,8 @@ The full season schedule is fetched once per hour and filtered in-process for ea
 
 Squiggle requires bots to:
 
-- Set a descriptive `User-Agent` header identifying the application (Teamarr does this automatically)
+- Set a descriptive `User-Agent` header identifying the application (Apex does this automatically)
 - Cache data and avoid repeated identical requests
 - Not spam the API with simultaneous bulk requests
 
-Teamarr's in-process caching satisfies all of these requirements.
+Apex's in-process caching satisfies all of these requirements.

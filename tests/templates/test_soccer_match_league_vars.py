@@ -10,9 +10,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from teamarr.core.types import Event, EventStatus, Team
-from teamarr.templates.context import GameContext, TeamChannelContext, TemplateContext
-from teamarr.templates.variables.soccer import (
+from apex.core.types import Event, EventStatus, Team
+from apex.templates.context import GameContext, TeamChannelContext, TemplateContext
+from apex.templates.variables.soccer import (
     extract_soccer_match_league,
     extract_soccer_match_league_id,
     extract_soccer_match_league_logo,
@@ -85,13 +85,13 @@ def _make_ctx(league: str) -> tuple[TemplateContext, GameContext]:
 class TestSoccerMatchLeague:
     """Tests for {soccer_match_league} — short alias via mapping service."""
 
-    @patch("teamarr.templates.variables.soccer.get_league_mapping_service")
+    @patch("apex.templates.variables.soccer.get_league_mapping_service")
     def test_returns_alias(self, mock_get_svc, mock_service):
         mock_get_svc.return_value = mock_service
         ctx, game_ctx = _make_ctx("eng.1")
         assert extract_soccer_match_league(ctx, game_ctx) == "EPL"
 
-    @patch("teamarr.templates.variables.soccer.get_league_mapping_service")
+    @patch("apex.templates.variables.soccer.get_league_mapping_service")
     def test_champions_league(self, mock_get_svc, mock_service):
         mock_get_svc.return_value = mock_service
         ctx, game_ctx = _make_ctx("uefa.champions")
@@ -116,19 +116,19 @@ class TestSoccerMatchLeague:
 class TestSoccerMatchLeagueName:
     """Tests for {soccer_match_league_name} — full display name."""
 
-    @patch("teamarr.templates.variables.soccer.get_league_mapping_service")
+    @patch("apex.templates.variables.soccer.get_league_mapping_service")
     def test_returns_display_name(self, mock_get_svc, mock_service):
         mock_get_svc.return_value = mock_service
         ctx, game_ctx = _make_ctx("eng.1")
         assert extract_soccer_match_league_name(ctx, game_ctx) == "English Premier League"
 
-    @patch("teamarr.templates.variables.soccer.get_league_mapping_service")
+    @patch("apex.templates.variables.soccer.get_league_mapping_service")
     def test_champions_league(self, mock_get_svc, mock_service):
         mock_get_svc.return_value = mock_service
         ctx, game_ctx = _make_ctx("uefa.champions")
         assert extract_soccer_match_league_name(ctx, game_ctx) == "UEFA Champions League"
 
-    @patch("teamarr.templates.variables.soccer.get_league_mapping_service")
+    @patch("apex.templates.variables.soccer.get_league_mapping_service")
     def test_fallback_uppercase(self, mock_get_svc, mock_service):
         mock_get_svc.return_value = mock_service
         ctx, game_ctx = _make_ctx("bra.1")
@@ -164,13 +164,13 @@ class TestSoccerMatchLeagueId:
 class TestSoccerMatchLeagueLogo:
     """Tests for {soccer_match_league_logo} — logo URL from mapping service."""
 
-    @patch("teamarr.templates.variables.soccer.get_league_mapping_service")
+    @patch("apex.templates.variables.soccer.get_league_mapping_service")
     def test_returns_logo_url(self, mock_get_svc, mock_service):
         mock_get_svc.return_value = mock_service
         ctx, game_ctx = _make_ctx("eng.1")
         assert "leaguelogos" in extract_soccer_match_league_logo(ctx, game_ctx)
 
-    @patch("teamarr.templates.variables.soccer.get_league_mapping_service")
+    @patch("apex.templates.variables.soccer.get_league_mapping_service")
     def test_unknown_league_returns_empty(self, mock_get_svc, mock_service):
         mock_get_svc.return_value = mock_service
         ctx, game_ctx = _make_ctx("bra.1")

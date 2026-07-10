@@ -6,22 +6,22 @@ docs_version: "2.3.0"
 ---
 
 <div style="text-align: center; margin-bottom: 2rem;">
-  <h1 style="margin-bottom: 0.5rem;">Teamarr</h1>
-  <img src="assets/images/logo.svg" alt="Teamarr" width="100" height="100" style="margin: 1rem 0;">
+  <h1 style="margin-bottom: 0.5rem;">Apex</h1>
+  <img src="assets/images/logo.svg" alt="Apex" width="100" height="100" style="margin: 1rem 0;">
   <p style="font-size: 1.25rem; color: #666;">Sports EPG Generator for Dispatcharr</p>
 </div>
 
-## What is Teamarr?
+## What is Apex?
 
-Teamarr is an add-on for [Dispatcharr](https://github.com/Dispatcharr/Dispatcharr) that generates enriched EPG for sports channels. While EPG generation can technically work standalone, Teamarr is designed for use alongside Dispatcharr.
+Apex is an add-on for [Dispatcharr](https://github.com/Dispatcharr/Dispatcharr) that generates enriched EPG for sports channels. While EPG generation can technically work standalone, Apex is designed for use alongside Dispatcharr.
 
-Teamarr pulls rich sports data from providers (ESPN, TSDB, HockeyTech, etc.) - schedules, venues, records, scores, standings, broadcasts, and more - and uses it to manage your IPTV sports channels in Dispatcharr.
+Apex pulls rich sports data from providers (ESPN, TSDB, HockeyTech, etc.) - schedules, venues, records, scores, standings, broadcasts, and more - and uses it to manage your IPTV sports channels in Dispatcharr.
 
 **Two workflows:**
 
-- **Event-based** - Many IPTV providers offer sports through ephemeral streams created to serve a single game. These appear around game time (often the morning of, or a day before) and disappear after the event concludes (typically end of day or the following morning). Streams are typically organized into groups - either by league (NFL, NBA, NHL) or by source (ESPN+, DAZN, TSN+, FloSports). A group may contain events from a single sport or league, or intermixed events from multiple leagues and sports. As long as stream names contain enough information to match to real-world events (e.g., "NFL: Bills vs Dolphins" or "DAZN: Man City vs Arsenal"), these IPTV groups can be used as source groups in Teamarr.
+- **Event-based** - Many IPTV providers offer sports through ephemeral streams created to serve a single game. These appear around game time (often the morning of, or a day before) and disappear after the event concludes (typically end of day or the following morning). Streams are typically organized into groups - either by league (NFL, NBA, NHL) or by source (ESPN+, DAZN, TSN+, FloSports). A group may contain events from a single sport or league, or intermixed events from multiple leagues and sports. As long as stream names contain enough information to match to real-world events (e.g., "NFL: Bills vs Dolphins" or "DAZN: Man City vs Arsenal"), these IPTV groups can be used as source groups in Apex.
 
-- **Team-based** - Some IPTV providers offer persistent channels dedicated to a single team (e.g., "New York Yankees", "LA Lakers"). These channels exist continuously but only have programming when that team plays. Teamarr looks up the team's schedule and populates the guide with their upcoming games.
+- **Team-based** - Some IPTV providers offer persistent channels dedicated to a single team (e.g., "New York Yankees", "LA Lakers"). These channels exist continuously but only have programming when that team plays. Apex looks up the team's schedule and populates the guide with their upcoming games.
 
 **Example:**
 
@@ -30,7 +30,7 @@ Your IPTV stream says:
 NFL: KC vs PHI
 ```
 
-Teamarr matches it to real data and generates:
+Apex matches it to real data and generates:
 ```
 Channel: Chiefs vs Eagles - 6:30 PM ET
 EPG:     Kansas City Chiefs @ Philadelphia Eagles
@@ -39,13 +39,13 @@ EPG:     Kansas City Chiefs @ Philadelphia Eagles
          Broadcast: NBC, Peacock
 ```
 
-**What Teamarr doesn't do:**
+**What Apex doesn't do:**
 
-- **Linear/traditional TV channels** - Teamarr does not support 24/7 channels like TSN, ESPN, or Sportsnet where game info lives in EPG metadata, not the stream name. Matching them would require parsing external EPG sources and correlating schedules - a fundamentally different architecture.
+- **Linear/traditional TV channels** - Apex does not support 24/7 channels like TSN, ESPN, or Sportsnet where game info lives in EPG metadata, not the stream name. Matching them would require parsing external EPG sources and correlating schedules - a fundamentally different architecture.
 
-- **Create team-based channels** - Team channels are static and already exist in your IPTV provider. Teamarr only generates EPG for them.
+- **Create team-based channels** - Team channels are static and already exist in your IPTV provider. Apex only generates EPG for them.
 
-- **Match incomplete stream names** - If your IPTV provider doesn't include enough information in the stream name to identify the event (e.g., just "NBA 1" with no teams listed), Teamarr cannot match it.
+- **Match incomplete stream names** - If your IPTV provider doesn't include enough information in the stream name to identify the event (e.g., just "NBA 1" with no teams listed), Apex cannot match it.
 
 ## Features
 
@@ -58,5 +58,5 @@ EPG:     Kansas City Chiefs @ Philadelphia Eagles
 
 ## Quick Links
 
-- [User Guide](guide/) - Get started with Teamarr
+- [User Guide](guide/) - Get started with Apex
 - [Technical Reference](reference/) - Architecture and API documentation

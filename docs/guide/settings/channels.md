@@ -50,7 +50,7 @@ Both modes use a global channel range:
 
 | Field | Description |
 |-------|-------------|
-| **Channel Range Start** | First channel number Teamarr can use |
+| **Channel Range Start** | First channel number Apex can use |
 | **Channel Range End** | Last channel number (optional — leave empty for no upper limit) |
 
 ### Per-League Starting Channels (Manual Mode)
@@ -162,13 +162,13 @@ Both **Stream Type** (team streams) and **Home/Away Feed** rules let you pick sp
 
 #### How Home/Away Feed detection works
 
-Teamarr builds a name-matching pattern from your selected teams' names and abbreviations, then looks for feed indicators in the stream name — a matchup (`vs`, `at`, `@`), a side (`home`/`away`), a camera label (`cam 01`/`cam 02`), or a `(Team feed)` marker. A stream like `Cubs vs Pirates (Home)` is recognized as the Pirates' home feed. Generic streams with no feed markers (for example a plain `Pirates vs Cubs` with no side) are left for other rules to handle. Because detection relies on the stream name, results depend on your provider's naming conventions.
+Apex builds a name-matching pattern from your selected teams' names and abbreviations, then looks for feed indicators in the stream name — a matchup (`vs`, `at`, `@`), a side (`home`/`away`), a camera label (`cam 01`/`cam 02`), or a `(Team feed)` marker. A stream like `Cubs vs Pirates (Home)` is recognized as the Pirates' home feed. Generic streams with no feed markers (for example a plain `Pirates vs Cubs` with no side) are left for other rules to handle. Because detection relies on the stream name, results depend on your provider's naming conventions.
 
 ### Export & Import
 
 Use the **Export** and **Import** buttons in the Stream Ordering header to back up your rules or move them between instances.
 
-- **Export** downloads your last **saved** rules (including the catch-all) as a `stream-ordering-rules.json` file. If you have unsaved edits in the editor, Teamarr warns you first — save before exporting if you want those edits included.
+- **Export** downloads your last **saved** rules (including the catch-all) as a `stream-ordering-rules.json` file. If you have unsaved edits in the editor, Apex warns you first — save before exporting if you want those edits included.
 - **Import** reads a rules file and **replaces** your entire current rule set. Rules with an invalid type, value, or priority are skipped, and a catch-all is added automatically if the file doesn't include one.
 
 Rules that reference an M3U account, event group, or Dispatcharr group match by **name**, so they carry over cleanly to another instance as long as the same names exist there. Team-based rules (Stream Type and Home/Away Feed) reference provider team IDs and only apply to teams present on the target instance.

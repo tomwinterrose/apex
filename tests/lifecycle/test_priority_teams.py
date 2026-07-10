@@ -11,8 +11,8 @@ import sqlite3
 
 import pytest
 
-from teamarr.database.channel_numbers import get_all_channels_sorted
-from teamarr.database.priority_teams import (
+from apex.database.channel_numbers import get_all_channels_sorted
+from apex.database.priority_teams import (
     add_priority_team,
     delete_priority_team,
     get_priority_team_match_keys,

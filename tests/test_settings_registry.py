@@ -14,10 +14,10 @@ from pathlib import Path
 
 import pytest
 
-from teamarr.database.settings.registry import GROUPS
-from teamarr.database.settings.types import AllSettings
+from apex.database.settings.registry import GROUPS
+from apex.database.settings.types import AllSettings
 
-SCHEMA_PATH = Path(__file__).parent.parent / "teamarr" / "database" / "schema.sql"
+SCHEMA_PATH = Path(__file__).parent.parent / "apex" / "database" / "schema.sql"
 
 
 @pytest.fixture(scope="module")
@@ -83,7 +83,7 @@ def test_pydantic_models_field_parity():
     lag a new backend-only field — but never unknown ones, which would break
     the asdict()-based model building in the routes.)
     """
-    from teamarr.api.routes.settings import models as m
+    from apex.api.routes.settings import models as m
 
     pairs = [
         ("dispatcharr", m.DispatcharrSettingsModel, m.DispatcharrSettingsUpdate),
@@ -114,7 +114,7 @@ def test_pydantic_models_field_parity():
 
 
 def test_fresh_schema_row_reads_back_dataclass_defaults(schema_sql):
-    from teamarr.database.settings import get_all_settings
+    from apex.database.settings import get_all_settings
 
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
@@ -133,7 +133,7 @@ def test_fresh_schema_row_reads_back_dataclass_defaults(schema_sql):
 
 def test_missing_columns_fall_back_to_defaults():
     """Partial schemas (un-reconciled DBs / old test fixtures) must not crash."""
-    from teamarr.database.settings import get_epg_settings, get_feed_separation_settings
+    from apex.database.settings import get_epg_settings, get_feed_separation_settings
 
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row

@@ -99,5 +99,5 @@ The provider fetches the full season schedule and caches it, then filters by dat
 
 | File | Purpose |
 |------|---------|
-| `teamarr/providers/hockeytech/provider.py` | HockeyTechProvider class |
-| `teamarr/providers/hockeytech/client.py` | HTTP client with client key management |
+| `apex/providers/hockeytech/provider.py` | HockeyTechProvider class |
+| `apex/providers/hockeytech/client.py` | HTTP client with client key management |

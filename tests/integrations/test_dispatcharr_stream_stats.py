@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from teamarr.dispatcharr.client import DispatcharrClient
+from apex.dispatcharr.client import DispatcharrClient
 
 
 @pytest.fixture

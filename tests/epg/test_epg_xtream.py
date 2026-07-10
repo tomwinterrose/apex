@@ -3,7 +3,7 @@
 import io
 from datetime import UTC, datetime
 
-from teamarr.consumers.matching.epg_xtream import (
+from apex.consumers.matching.epg_xtream import (
     _parse_xmltv_time,
     is_xtream_account,
     parse_xmltv_programs,

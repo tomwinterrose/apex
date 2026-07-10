@@ -13,13 +13,13 @@ Event-based EPG creates dynamic channels from M3U streams. Unlike team channels 
 ## How It Works
 
 1. Your IPTV provider delivers streams organized into groups (e.g., "NFL", "ESPN+", "DAZN")
-2. You import these stream groups into Teamarr as **event groups**
-3. Teamarr parses each stream name, matches it to a real sporting event, and creates a channel with rich EPG data
+2. You import these stream groups into Apex as **event groups**
+3. Apex parses each stream name, matches it to a real sporting event, and creates a channel with rich EPG data
 4. Channels are created in Dispatcharr with proper names, logos, EPG data, and group/profile assignments
 
 ## Global Defaults vs Per-Group Settings
 
-Teamarr uses a **subscription model** where global defaults apply to all groups:
+Apex uses a **subscription model** where global defaults apply to all groups:
 
 - **League subscriptions** — which sports and leagues to scan for events
 - **Soccer configuration** — follow teams, select leagues, or include all
@@ -48,7 +48,7 @@ Click **Matched** numbers to see which streams matched to which events. Click th
 
 ## Importing Groups
 
-Click **Import** to pull stream groups from your Dispatcharr M3U accounts. Teamarr shows available groups with stream counts. Select the groups you want and they'll be created with default settings.
+Click **Import** to pull stream groups from your Dispatcharr M3U accounts. Apex shows available groups with stream counts. Select the groups you want and they'll be created with default settings.
 
 ## Stream Matching Pipeline
 

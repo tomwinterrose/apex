@@ -8,7 +8,7 @@ import builtins
 
 import pytest
 
-from teamarr.consumers.matching.country_resolver import CountryNameResolver, _normalize
+from apex.consumers.matching.country_resolver import CountryNameResolver, _normalize
 
 
 @pytest.fixture(scope="module")

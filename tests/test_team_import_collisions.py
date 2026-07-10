@@ -8,7 +8,7 @@ import sqlite3
 
 import pytest
 
-from teamarr.services.team_import import ImportTeam, bulk_import_teams
+from apex.services.team_import import ImportTeam, bulk_import_teams
 
 
 @pytest.fixture

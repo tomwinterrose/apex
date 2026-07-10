@@ -50,7 +50,7 @@ class TestTemplateResolution:
 
     def test_league_match_has_highest_priority(self, test_db):
         """League-specific template should take priority over sport and default."""
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template_for_event,
         )
@@ -64,7 +64,7 @@ class TestTemplateResolution:
 
     def test_sport_match_over_default(self, test_db):
         """Sport-specific template should take priority over default."""
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template_for_event,
         )
@@ -77,7 +77,7 @@ class TestTemplateResolution:
 
     def test_default_when_no_specific_match(self, test_db):
         """Default template should be used when no specific match."""
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template_for_event,
         )
@@ -90,7 +90,7 @@ class TestTemplateResolution:
 
     def test_multiple_leagues_in_one_assignment(self, test_db):
         """Template with multiple leagues should match any of them."""
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template_for_event,
         )
@@ -111,14 +111,14 @@ class TestTemplateResolution:
 
     def test_no_template_configured(self, test_db):
         """No templates at all should return None."""
-        from teamarr.database.subscription import get_subscription_template_for_event
+        from apex.database.subscription import get_subscription_template_for_event
 
         result = get_subscription_template_for_event(test_db, "any", "any")
         assert result is None, "Should return None when no template configured"
 
     def test_empty_sport_league_in_event(self, test_db):
         """Events with empty sport/league should only match default."""
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template_for_event,
         )
@@ -131,7 +131,7 @@ class TestTemplateResolution:
 
     def test_sport_and_league_on_same_assignment(self, test_db):
         """Assignment with both sport and league — league check runs first."""
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template_for_event,
         )
@@ -158,7 +158,7 @@ class TestTemplateResolutionIntegration:
 
     def test_full_workflow(self, test_db):
         """Test complete workflow: add templates, resolve."""
-        from teamarr.database.subscription import (
+        from apex.database.subscription import (
             add_subscription_template,
             get_subscription_template_for_event,
             get_subscription_templates,

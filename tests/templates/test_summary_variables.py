@@ -7,15 +7,15 @@ passthrough extractors: game_recap, game_event_note, soccer_match_note.
 
 from datetime import datetime
 
-from teamarr.core.types import Event, EventStatus, Team
-from teamarr.providers.espn.provider import ESPNProvider
-from teamarr.templates.context import (
+from apex.core.types import Event, EventStatus, Team
+from apex.providers.espn.provider import ESPNProvider
+from apex.templates.context import (
     GameContext,
     TeamChannelContext,
     TemplateContext,
 )
-from teamarr.templates.variables.soccer import extract_soccer_match_note
-from teamarr.templates.variables.summary import (
+from apex.templates.variables.soccer import extract_soccer_match_note
+from apex.templates.variables.summary import (
     extract_game_event_note,
     extract_game_preview,
     extract_game_recap,

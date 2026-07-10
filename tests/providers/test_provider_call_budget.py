@@ -1,4 +1,4 @@
-"""Per-run provider fetch-count regression guard (#285, teamarrv2-ddpi.5).
+"""Per-run provider fetch-count regression guard (#285, apexv2-ddpi.5).
 
 Call-volume regressions ship silently: #254's per-event refetch made 2,027
 summary calls per run instead of ~289, and the pre-t82y miss storms fired
@@ -15,8 +15,8 @@ consciously update the expected count, not slide past a loose bound.
 from datetime import UTC, date, datetime
 from unittest.mock import MagicMock
 
-from teamarr.core.types import Event, EventStatus, Team
-from teamarr.services.sports_data import SportsDataService
+from apex.core.types import Event, EventStatus, Team
+from apex.services.sports_data import SportsDataService
 from tests.fakes import FakeCache
 
 

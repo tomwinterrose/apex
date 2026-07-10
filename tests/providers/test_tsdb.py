@@ -12,10 +12,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from teamarr.consumers.cache.refresh import CacheRefresher
-from teamarr.providers.registry import ProviderConfig, ProviderRegistry
-from teamarr.providers.tsdb.provider import TSDBProvider
-from teamarr.providers.tsdb.racing import parse_racing_events
+from apex.consumers.cache.refresh import CacheRefresher
+from apex.providers.registry import ProviderConfig, ProviderRegistry
+from apex.providers.tsdb.provider import TSDBProvider
+from apex.providers.tsdb.racing import parse_racing_events
 from tests.helpers import SCHEMA_PATH
 
 # ===========================================================================
@@ -331,7 +331,7 @@ class TestDisplaySettingsReloadIntegration:
         """The display settings endpoint should call reinitialize_provider for tsdb."""
         import inspect
 
-        from teamarr.api.routes.settings.display import update_display_settings_endpoint
+        from apex.api.routes.settings.display import update_display_settings_endpoint
 
         source = inspect.getsource(update_display_settings_endpoint)
         assert 'reinitialize_provider("tsdb")' in source
@@ -396,7 +396,7 @@ class _FakeTSDB:
 
 @pytest.mark.skip(
     reason="PREMIUM/FREE reference cricket/rugby/boxing/CFL league codes from "
-    "teamarr's full schema.sql; vroomarr's motorsports-only schema doesn't seed "
+    "apex's full schema.sql; apex's motorsports-only schema doesn't seed "
     "them (and has no free-tier TSDB league at all — wec/imsa are both premium)."
 )
 def test_premium_tsdb_leagues_skipped_without_key():
@@ -424,7 +424,7 @@ def test_premium_tsdb_leagues_included_with_key():
 
 @pytest.mark.skip(
     reason="PREMIUM/FREE reference cricket/rugby/boxing/CFL league codes from "
-    "teamarr's full schema.sql; vroomarr's motorsports-only schema doesn't seed "
+    "apex's full schema.sql; apex's motorsports-only schema doesn't seed "
     "them (and has no free-tier TSDB league at all — wec/imsa are both premium)."
 )
 def test_premium_tsdb_leagues_query():

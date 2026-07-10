@@ -9,13 +9,13 @@ English ones — non-English EPGs label gender that way, not Women/(W).
 
 import pytest
 
-from teamarr.consumers.matching.classifier import (
+from apex.consumers.matching.classifier import (
     _clean_team_name,
     _narrow_by_gender,
     classify_stream,
     detect_league_hint,
 )
-from teamarr.services.detection_keywords import DetectionKeywordService
+from apex.services.detection_keywords import DetectionKeywordService
 
 PAIR = ["mens-college-basketball", "womens-college-basketball"]
 

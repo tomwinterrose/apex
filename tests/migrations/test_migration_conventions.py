@@ -1,6 +1,6 @@
 """Static-analysis tests for migration conventions.
 
-Pins the rules documented in teamarr/database/MIGRATIONS.md so they don't
+Pins the rules documented in apex/database/MIGRATIONS.md so they don't
 silently drift back into bad patterns:
 
   - Schema (column shape) lives in schema.sql, enforced by reconciliation.
@@ -18,7 +18,7 @@ import pytest
 
 from tests.helpers import REPO_ROOT
 
-VERSIONED_PY = REPO_ROOT / "teamarr" / "database" / "migrations" / "versioned.py"
+VERSIONED_PY = REPO_ROOT / "apex" / "database" / "migrations" / "versioned.py"
 
 
 @pytest.fixture(scope="module")

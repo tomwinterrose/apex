@@ -16,9 +16,9 @@ import json
 
 import pytest
 
-import teamarr.database.channels.streams as streams_mod
-from teamarr.database.channels.streams import clear_stream_stats, refresh_stream_stats
-from teamarr.database.channels.types import ManagedChannelStream
+import apex.database.channels.streams as streams_mod
+from apex.database.channels.streams import clear_stream_stats, refresh_stream_stats
+from apex.database.channels.types import ManagedChannelStream
 
 
 def _insert_channel(db_conn) -> int:

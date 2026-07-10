@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from teamarr.database.channels.streams import update_stream_account_name
+from apex.database.channels.streams import update_stream_account_name
 from tests.fakes import make_bare_processor
 
 # ======================================================== update_stream_account_name

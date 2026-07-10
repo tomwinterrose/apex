@@ -7,7 +7,7 @@ docs_version: "2.3.1"
 
 # Channels
 
-The Channels page shows all event-based channels currently managed by Teamarr. These are ephemeral channels created for sporting events and automatically deleted when events end.
+The Channels page shows all event-based channels currently managed by Apex. These are ephemeral channels created for sporting events and automatically deleted when events end.
 
 Team-based channels are managed separately on the [Teams](teams) page.
 
@@ -44,12 +44,12 @@ The Status column shows whether each channel is correctly synced to Dispatcharr.
 | **In Sync** | Green | Channel matches Dispatcharr — profiles, streams, and settings are aligned |
 | **Pending** | Gray | Channel created locally, awaiting first sync to Dispatcharr |
 | **Created** | Blue | Just created in Dispatcharr, not yet verified |
-| **Drifted** | Yellow | Configuration mismatch detected — profiles, streams, or settings differ from what Teamarr expects. Re-synced on next generation run. |
+| **Drifted** | Yellow | Configuration mismatch detected — profiles, streams, or settings differ from what Apex expects. Re-synced on next generation run. |
 | **Orphaned** | Red | Tracked locally but missing from Dispatcharr |
 | **Error** | Red | Sync encountered an error |
 
 {: .note }
-Drifted channels self-heal automatically. The lifecycle sync compares Dispatcharr's actual state against Teamarr's expected state and corrects any differences on the next EPG generation.
+Drifted channels self-heal automatically. The lifecycle sync compares Dispatcharr's actual state against Apex's expected state and corrects any differences on the next EPG generation.
 
 ## Pending Deletions
 
@@ -61,17 +61,17 @@ Select multiple channels using the checkboxes to enable bulk delete. A fixed bar
 
 ## Find Orphans
 
-The **Find Orphans** button scans Dispatcharr for channels that exist there but aren't tracked by Teamarr. This can happen if:
+The **Find Orphans** button scans Dispatcharr for channels that exist there but aren't tracked by Apex. This can happen if:
 
-- Teamarr was restarted or restored from backup
-- Channels were created manually in Dispatcharr with Teamarr-style IDs
+- Apex was restarted or restored from backup
+- Channels were created manually in Dispatcharr with Apex-style IDs
 - A sync error left channels behind
 
 Each orphan can be deleted individually or all at once from the modal.
 
 ## Reset All
 
-The **Reset All** button removes all Teamarr-managed event channels from Dispatcharr. This is a destructive operation that:
+The **Reset All** button removes all Apex-managed event channels from Dispatcharr. This is a destructive operation that:
 
 1. Shows a preview of all channels that will be deleted
 2. Requires confirmation before proceeding

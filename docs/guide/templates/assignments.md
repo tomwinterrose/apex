@@ -18,7 +18,7 @@ Template assignments use a priority system to decide which template applies to a
 2. **Sport-specific** — A template assigned to a sport (e.g., "Hockey") applies to all leagues in that sport
 3. **Default** — The fallback template used when no sport or league match exists
 
-When generating EPG, Teamarr checks the event's league first, then its sport, then falls back to the default. The most specific matching rule wins.
+When generating EPG, Apex checks the event's league first, then its sport, then falls back to the default. The most specific matching rule wins.
 
 ## Managing Assignments
 
@@ -41,7 +41,7 @@ You can add, edit, or remove rules. Changes apply to all event groups on the nex
 | NHL Premium | — | NHL, AHL | NHL and AHL events use "NHL Premium" |
 | Default | — | — | Everything else uses "Default" |
 
-If an AHL event is generated, Teamarr checks:
+If an AHL event is generated, Apex checks:
 
 1. Is there a league-specific rule for AHL? **Yes** — "NHL Premium" matches. Use it.
 

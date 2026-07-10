@@ -8,7 +8,7 @@ docs_version: "2.3.1"
 
 # API Layer
 
-Teamarr's backend is a FastAPI application serving a REST API at `/api/v1/` and a React SPA for non-API routes.
+Apex's backend is a FastAPI application serving a REST API at `/api/v1/` and a React SPA for non-API routes.
 
 ## Route Modules
 
@@ -45,7 +45,7 @@ The lifespan handler in `app.py` orchestrates startup in phases:
 5. **STARTING_SCHEDULER** — Background EPG cron scheduler
 6. **READY** — Fully operational
 
-V1 (Teamarr 1.x) databases are no longer supported. If a V1 database is detected on
+V1 (Apex 1.x) databases are no longer supported. If a V1 database is detected on
 startup the application refuses to start with a clear error pointing the user to
 move or delete the file before retrying.
 
@@ -79,9 +79,9 @@ Non-API routes serve the React frontend:
 
 | File | Purpose |
 |------|---------|
-| `teamarr/api/app.py` | FastAPI app, lifespan, route registration |
-| `teamarr/api/routes/` | 18 route modules |
-| `teamarr/api/models.py` | Pydantic request/response models |
-| `teamarr/api/dependencies.py` | Dependency injection |
-| `teamarr/api/generation_status.py` | Generation progress state machine |
-| `teamarr/api/startup_state.py` | Startup phase tracking |
+| `apex/api/app.py` | FastAPI app, lifespan, route registration |
+| `apex/api/routes/` | 18 route modules |
+| `apex/api/models.py` | Pydantic request/response models |
+| `apex/api/dependencies.py` | Dependency injection |
+| `apex/api/generation_status.py` | Generation progress state machine |
+| `apex/api/startup_state.py` | Startup phase tracking |

@@ -27,7 +27,7 @@ class TestPerEventFillerAnnotation:
     def test_matches_get_event_filler_config_annotation(self):
         """Each match should be annotated with _event_filler_config from its template."""
 
-        from teamarr.consumers.filler.event_filler import (
+        from apex.consumers.filler.event_filler import (
             EventFillerConfig,
             template_to_event_filler_config,
         )
@@ -73,7 +73,7 @@ class TestPerEventFillerAnnotation:
 
     def test_per_event_filler_used_in_generate_filler(self):
         """_generate_filler_for_streams should use _event_filler_config from match."""
-        from teamarr.consumers.filler.event_filler import EventFillerConfig
+        from apex.consumers.filler.event_filler import EventFillerConfig
 
         mma_filler = EventFillerConfig(pregame_enabled=True, postgame_enabled=False)
         default_filler = EventFillerConfig(pregame_enabled=False, postgame_enabled=True)
@@ -90,7 +90,7 @@ class TestPerEventFillerAnnotation:
 
     def test_fallback_to_default_filler_when_no_per_event(self):
         """Without _event_filler_config, should fall back to default filler_config."""
-        from teamarr.consumers.filler.event_filler import EventFillerConfig
+        from apex.consumers.filler.event_filler import EventFillerConfig
 
         default_filler = EventFillerConfig(pregame_enabled=False, postgame_enabled=True)
 
@@ -124,7 +124,7 @@ class TestSegmentAutoAppendRemoval:
         """EventEPGGenerator.generate_for_matched_streams should NOT append segment."""
         import inspect
 
-        from teamarr.consumers.event_epg import EventEPGGenerator
+        from apex.consumers.event_epg import EventEPGGenerator
 
         source = inspect.getsource(EventEPGGenerator.generate_for_matched_streams)
         # The auto-append pattern was: channel_name = f"{channel_name} - {segment_display}"
@@ -136,7 +136,7 @@ class TestSegmentAutoAppendRemoval:
         """_create_channel should NOT auto-append segment_display."""
         import inspect
 
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         source = inspect.getsource(ChannelLifecycleService._create_channel)
         # The old pattern was: channel_name = f"{channel_name} - {segment_display}"
@@ -148,7 +148,7 @@ class TestSegmentAutoAppendRemoval:
         """_generate_channel_name should accept segment parameter for template resolution."""
         import inspect
 
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         sig = inspect.signature(ChannelLifecycleService._generate_channel_name)
         assert "segment" in sig.parameters, (
@@ -159,7 +159,7 @@ class TestSegmentAutoAppendRemoval:
         """_resolve_template should pass card_segment to build_for_event."""
         import inspect
 
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         source = inspect.getsource(ChannelLifecycleService._resolve_template)
         assert "card_segment" in source, (
@@ -179,7 +179,7 @@ class TestPerStreamErrorIsolation:
         import inspect
         import textwrap
 
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         source = inspect.getsource(ChannelLifecycleService.process_matched_streams)
         source = textwrap.dedent(source)
@@ -207,7 +207,7 @@ class TestPerStreamErrorIsolation:
         """Exception handlers should use 'continue' to process remaining streams."""
         import inspect
 
-        from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+        from apex.consumers.lifecycle.service import ChannelLifecycleService
 
         source = inspect.getsource(ChannelLifecycleService.process_matched_streams)
         # The except handler should log and continue

@@ -1,9 +1,14 @@
 services:
-  vroomarr:
-    image: ghcr.io/tomwinterrose/vroomarr:latest
+  apex:
+    image: ghcr.io/tomwinterrose/apex:latest
     ports:
       - "9198:9198"
     volumes:
+      # Deliberately kept as "vroomarr-data", not renamed to match the
+      # service — Compose treats a volume name change as a NEW empty volume,
+      # which would orphan any existing install's database. If you're
+      # migrating an existing vroomarr deployment, keep this name; only use
+      # "apex-data" for a genuinely fresh install.
       - vroomarr-data:/app/data
     environment:
       - DISPATCHARR_URL=${DISPATCHARR_URL:-}

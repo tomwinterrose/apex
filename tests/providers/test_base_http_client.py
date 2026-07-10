@@ -3,8 +3,8 @@
 import httpx
 import pytest
 
-from teamarr.providers import base_client
-from teamarr.providers.base_client import BaseHTTPClient
+from apex.providers import base_client
+from apex.providers.base_client import BaseHTTPClient
 
 
 class _StubClient(BaseHTTPClient):

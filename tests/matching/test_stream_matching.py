@@ -9,8 +9,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from teamarr.consumers.matching.result import MatchMethod
-from teamarr.core.types import Event, EventStatus, Team
+from apex.consumers.matching.result import MatchMethod
+from apex.core.types import Event, EventStatus, Team
 
 # ---------------------------------------------------------------------------
 # Helpers

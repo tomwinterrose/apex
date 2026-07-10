@@ -11,15 +11,15 @@ from pathlib import Path
 
 import pytest
 
-from teamarr.database.connection import init_db
-from teamarr.database.migrations import (
+from apex.database.connection import init_db
+from apex.database.migrations import (
     _migrate_stream_match_cache_check,
     _migrate_stream_match_cache_restore_if_needed,
     _migrate_v74_preserve_epg_match_offstate,
     _migrate_v75_extract_art_base_url,
     _run_migrations,
 )
-from teamarr.utilities.xmltv import apply_art_base_url
+from apex.utilities.xmltv import apply_art_base_url
 
 # ===========================================================================
 # v73 — MiLB duplicate-league dedupe
@@ -310,7 +310,7 @@ class TestV73RemapsUserData:
         assert "aaa" not in leagues
 
     def test_channel_sort_priorities_dedupes_when_old_and_new_both_present(self, tmp_path):
-        """Regression for #202 / teamarrv2-98x: a user with sort priorities
+        """Regression for #202 / apexv2-98x: a user with sort priorities
         configured under both the old MiLB code and the new code for the same
         sport used to crash startup with UNIQUE(sport, league_code) violation.
         The migration should now drop the colliding old row in favor of the
@@ -422,7 +422,7 @@ class TestV73MissingTablesGraceful:
 
 class TestFreshInstall:
     @pytest.mark.skip(
-        reason="Vroomarr's schema.sql is motorsports-only and seeds no baseball "
+        reason="Apex's schema.sql is motorsports-only and seeds no baseball "
         "leagues (MiLB or otherwise)."
     )
     def test_no_duplicate_milb_codes_on_fresh_install(self, tmp_path):
@@ -678,7 +678,7 @@ def test_apply_art_base_url(value, base, expected):
 
 
 def test_v76_adds_leading_slash_to_relative_paths():
-    from teamarr.database.migrations import _migrate_v76_leading_slash_art_paths
+    from apex.database.migrations import _migrate_v76_leading_slash_art_paths
 
     conn = _art_make_db()
     conn.execute(
@@ -700,7 +700,7 @@ def test_v76_adds_leading_slash_to_relative_paths():
 
 
 def test_v76_idempotent_on_already_slashed():
-    from teamarr.database.migrations import _migrate_v76_leading_slash_art_paths
+    from apex.database.migrations import _migrate_v76_leading_slash_art_paths
 
     conn = _art_make_db()
     conn.execute("INSERT INTO templates (id, program_art_url) VALUES (1, '/already/ok.png')")
@@ -717,7 +717,7 @@ def test_resolve_art_applies_base_uniformly(monkeypatch):
     relative values, passes absolute through, and no-ops with no base — so every
     sink that uses it (EPG icon, Dispatcharr channel logo, fillers) reconstructs
     identically."""
-    from teamarr.templates.resolver import TemplateResolver
+    from apex.templates.resolver import TemplateResolver
 
     r = TemplateResolver("http://host:4999")
     # relative -> base prefixed
@@ -733,7 +733,7 @@ def test_resolve_art_applies_base_uniformly(monkeypatch):
 
 
 def test_create_update_normalize_art_paths():
-    from teamarr.database.templates import _normalize_art_in_kwargs
+    from apex.database.templates import _normalize_art_in_kwargs
 
     kw = {
         "program_art_url": "art/{league}/cover.png",
@@ -752,7 +752,7 @@ def test_create_update_never_roots_variable_led_art():
     """Variable-led art values must not get a leading slash (#275) — the
     variable may resolve to an absolute URL. Corrupted '/{var}' input is
     repaired on save."""
-    from teamarr.database.templates import _normalize_art_in_kwargs
+    from apex.database.templates import _normalize_art_in_kwargs
 
     kw = {
         "program_art_url": "{feed_team_logo}",
@@ -769,7 +769,7 @@ def test_create_update_never_roots_variable_led_art():
 
 
 def test_v78_strips_slash_before_variable_led_art():
-    from teamarr.database.migrations import _migrate_v78_strip_slash_before_art_variable
+    from apex.database.migrations import _migrate_v78_strip_slash_before_art_variable
 
     conn = _art_make_db()
     conn.execute(
@@ -791,7 +791,7 @@ def test_v78_strips_slash_before_variable_led_art():
 
 
 def test_v78_idempotent_and_leaves_clean_values():
-    from teamarr.database.migrations import _migrate_v78_strip_slash_before_art_variable
+    from apex.database.migrations import _migrate_v78_strip_slash_before_art_variable
 
     conn = _art_make_db()
     conn.execute(

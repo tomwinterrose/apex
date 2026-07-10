@@ -1,6 +1,6 @@
 """Tests for motorsports template variables (F1, NASCAR, ...).
 
-Verifies extractors in teamarr/templates/variables/motorsports.py for:
+Verifies extractors in apex/templates/variables/motorsports.py for:
 - Event/circuit identity (race_name, circuit_name)
 - Session identity for the current channel (session_name, session_type,
   next_session_name, next_session_time)
@@ -12,9 +12,9 @@ Verifies extractors in teamarr/templates/variables/motorsports.py for:
 
 from datetime import UTC, datetime
 
-from teamarr.core import Event, EventStatus, RacingResult, RacingSession, Team
-from teamarr.templates.context import GameContext, TemplateContext
-from teamarr.templates.variables.motorsports import (
+from apex.core import Event, EventStatus, RacingResult, RacingSession, Team
+from apex.templates.context import GameContext, TemplateContext
+from apex.templates.variables.motorsports import (
     extract_circuit_name,
     extract_fastest_lap_driver,
     extract_grid,

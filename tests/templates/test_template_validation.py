@@ -7,8 +7,8 @@ POST /templates/validate endpoint. Mirrors frontend/src/utils/templateValidation
 
 from fastapi.testclient import TestClient
 
-from teamarr.api.app import app
-from teamarr.templates.validation import (
+from apex.api.app import app
+from apex.templates.validation import (
     build_valid_variable_sets,
     extract_variables,
     valid_condition_names,

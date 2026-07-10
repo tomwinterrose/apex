@@ -1,4 +1,4 @@
-"""Integration tests for the EPG path in StreamMatcher (teamarrv2-183.4).
+"""Integration tests for the EPG path in StreamMatcher (apexv2-183.4).
 
 We exercise the EPG-specific orchestration methods (_match_via_epg,
 _reconcile_epg) on a matcher built with no service/DB, patching the shared
@@ -9,11 +9,11 @@ fan-out, and reconciliation.
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 
-from teamarr.consumers.matching.classifier import StreamCategory
-from teamarr.consumers.matching.epg_index import EPGProgramIndex
-from teamarr.consumers.matching.matcher import MatchedStreamResult
-from teamarr.consumers.matching.result import MatchMethod, MatchOutcome
-from teamarr.dispatcharr.types import DispatcharrProgram
+from apex.consumers.matching.classifier import StreamCategory
+from apex.consumers.matching.epg_index import EPGProgramIndex
+from apex.consumers.matching.matcher import MatchedStreamResult
+from apex.consumers.matching.result import MatchMethod, MatchOutcome
+from apex.dispatcharr.types import DispatcharrProgram
 from tests.fakes import make_stream_matcher
 
 BASE = datetime(2026, 6, 1, 18, tzinfo=UTC)
@@ -371,7 +371,7 @@ def test_epg_racing_fallback_uses_racing_classification_in_result(monkeypatch):
 
 
 def test_epg_racing_fallback_requires_text_evidence(monkeypatch):
-    # teamarrv2-w42k: with league_event_type="event", RACING_EVENT is the
+    # apexv2-w42k: with league_event_type="event", RACING_EVENT is the
     # classifier's default bucket, so without a text gate ANY unmatched
     # programme (documentary, movie) reaches the racing matcher and can bind
     # to the day's race by date coverage — one run produced 853 false
@@ -400,7 +400,7 @@ def test_epg_primary_racing_requires_text_evidence_in_racing_only_group(monkeypa
     # classify_stream call in _match_via_epg already defaults an unrelated
     # programme to RACING_EVENT — the fallback's text-evidence gate never
     # even runs, since the primary route already "succeeds". This is the
-    # same false-positive class as the fallback bug (teamarrv2-w42k), just on
+    # same false-positive class as the fallback bug (apexv2-w42k), just on
     # a different linear channel (e.g. a local PBS affiliate airing a
     # documentary during a race weekend, with no relation to the event).
     prog = _prog(title="Nature", sub="Wolves of Yellowstone")

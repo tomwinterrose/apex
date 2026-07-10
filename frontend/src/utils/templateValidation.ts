@@ -54,7 +54,7 @@ export function buildValidVariableSet(categories: VariableCategory[]): {
 }
 
 /**
- * Mirror of the backend resolver's VARIABLE_PATTERN (teamarr/templates/resolver.py).
+ * Mirror of the backend resolver's VARIABLE_PATTERN (apex/templates/resolver.py).
  *
  * The engine only treats a braced token as a variable when it matches this shape:
  * a lowercase/underscore-led name (digits, `_`, `@` allowed — e.g. `vs_@`) with an

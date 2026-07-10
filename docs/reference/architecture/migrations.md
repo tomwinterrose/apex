@@ -8,7 +8,7 @@ docs_version: "2.3.1"
 
 # Database Migrations
 
-Teamarr uses a **checkpoint + incremental migration + schema reconciliation** system to handle database schema changes safely across versions. Reconciliation (added in v2.4.0) compares every table's live columns against `schema.sql` on every startup and adds any missing columns automatically — so most pure column additions no longer need an explicit migration block.
+Apex uses a **checkpoint + incremental migration + schema reconciliation** system to handle database schema changes safely across versions. Reconciliation (added in v2.4.0) compares every table's live columns against `schema.sql` on every startup and adds any missing columns automatically — so most pure column additions no longer need an explicit migration block.
 
 ## Architecture
 
@@ -36,10 +36,10 @@ Fresh Install          Existing Database (v2-v42)      Existing Database (v43+)
 
 | File | Purpose |
 |------|---------|
-| `teamarr/database/schema.sql` | Authoritative schema for fresh installs AND the reference for reconciliation |
-| `teamarr/database/checkpoint_v43.py` | Consolidates v2-v43 into single operation |
-| `teamarr/database/reconciliation.py` | Compares real DB columns against `schema.sql`, adds any that are missing |
-| `teamarr/database/connection.py` | `_run_migrations()` orchestrates everything |
+| `apex/database/schema.sql` | Authoritative schema for fresh installs AND the reference for reconciliation |
+| `apex/database/checkpoint_v43.py` | Consolidates v2-v43 into single operation |
+| `apex/database/reconciliation.py` | Compares real DB columns against `schema.sql`, adds any that are missing |
+| `apex/database/connection.py` | `_run_migrations()` orchestrates everything |
 
 ## How It Works
 

@@ -1,4 +1,4 @@
-"""Tests for tennis support (epic teamarrv2-mf7): ESPN per-match parsing,
+"""Tests for tennis support (epic apexv2-mf7): ESPN per-match parsing,
 TENNIS_MATCH classification, and TennisMatcher surname scoring.
 
 Fixture shapes and stream names are taken from LIVE data captured during
@@ -9,16 +9,16 @@ where the full pipeline validated at ~90% match rate on 683 real streams.
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from teamarr.consumers.matching.classifier import (
+from apex.consumers.matching.classifier import (
     StreamCategory,
     classify_stream,
     is_racing,
     is_tennis,
 )
-from teamarr.consumers.matching.tennis_matcher import TennisMatcher
-from teamarr.core.types import Event, EventStatus, Team
-from teamarr.providers.espn.tennis import TennisParserMixin, _tennis_surnames
-from teamarr.services.detection_keywords import DetectionKeywordService
+from apex.consumers.matching.tennis_matcher import TennisMatcher
+from apex.core.types import Event, EventStatus, Team
+from apex.providers.espn.tennis import TennisParserMixin, _tennis_surnames
+from apex.services.detection_keywords import DetectionKeywordService
 
 
 def setup_function():
@@ -204,8 +204,8 @@ def test_parser_title_is_away_vs_home_even_when_home_listed_first():
 
 
 def test_player_variables_match_title_order():
-    from teamarr.templates.context import GameContext, TemplateContext
-    from teamarr.templates.variables.tennis import (
+    from apex.templates.context import GameContext, TemplateContext
+    from apex.templates.variables.tennis import (
         extract_player1,
         extract_player1_last,
         extract_player2,
@@ -229,8 +229,8 @@ def test_player_variables_match_title_order():
 
 
 def test_player_variables_empty_for_non_tennis():
-    from teamarr.templates.context import GameContext, TemplateContext
-    from teamarr.templates.variables.tennis import extract_player1
+    from apex.templates.context import GameContext, TemplateContext
+    from apex.templates.variables.tennis import extract_player1
 
     hockey = _tennis_event(
         "x", _player("A B", "B"), _player("C D", "D"), datetime(2026, 7, 6, tzinfo=ZoneInfo("UTC"))
@@ -412,7 +412,7 @@ def test_match_to_event_picks_correct_match(monkeypatch):
         event_league_sport="tennis",
     )
 
-    from teamarr.consumers.matching.tennis_matcher import TennisMatchContext
+    from apex.consumers.matching.tennis_matcher import TennisMatchContext
 
     ctx = TennisMatchContext(
         stream_name=c.normalized.original,
@@ -439,7 +439,7 @@ def test_widened_fallback_requires_unique_top(monkeypatch):
         league_event_type="event",
         event_league_sport="tennis",
     )
-    from teamarr.consumers.matching.tennis_matcher import TennisMatchContext
+    from apex.consumers.matching.tennis_matcher import TennisMatchContext
 
     ctx = TennisMatchContext(
         stream_name=c.normalized.original,
@@ -470,8 +470,8 @@ def test_epg_path_skips_tennis_programmes():
     group when programme titles reached the tennis pipeline)."""
     from zoneinfo import ZoneInfo as _Z
 
-    from teamarr.consumers.matching.epg_index import EPGProgramIndex
-    from teamarr.dispatcharr.types import DispatcharrProgram
+    from apex.consumers.matching.epg_index import EPGProgramIndex
+    from apex.dispatcharr.types import DispatcharrProgram
     from tests.fakes import make_stream_matcher
 
     start = datetime(2026, 7, 5, 13, tzinfo=_Z("UTC"))
@@ -509,7 +509,7 @@ def test_epg_path_skips_tennis_programmes():
 # Court/round feed matching (phase 2, mf7.7)
 # ---------------------------------------------------------------------------
 
-from teamarr.consumers.matching.tennis_matcher import (  # noqa: E402
+from apex.consumers.matching.tennis_matcher import (  # noqa: E402
     _court_key,
     _extract_courts,
     _extract_round,
