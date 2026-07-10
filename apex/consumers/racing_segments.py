@@ -8,6 +8,12 @@ stream's own name clearly names one specific session (e.g. "Free Practice
 3"), in which case it's scoped to just that session instead of fanning out
 across the whole weekend (see _session_category_from_stream_name).
 
+Practice sessions are excluded from that whole-weekend fan-out (they're only
+included when a stream's name specifically names one): providers frequently
+don't carry a dedicated practice feed at all, and a generic linear stream
+landing on a Practice channel is more likely to produce a channel with
+nothing actually airing yet than a legitimate live source.
+
 NASCAR-style single-session events (a single "race" session) degenerate to
 one segment via the same code path - no special-casing required.
 """
@@ -259,6 +265,11 @@ def _session_in_category(session_code: str, category: str) -> bool:
     return session_code == category or session_code.startswith(f"{category}_")
 
 
+def _is_practice_session(session_code: str) -> bool:
+    """True for practice-type sessions (fp1/fp2/fp3, or an unnumbered "practice")."""
+    return session_code.startswith("fp") or session_code == "practice"
+
+
 def is_racing_event(event: Event | None) -> bool:
     """Check if event is a racing event with session data to expand."""
     if not event:
@@ -337,12 +348,24 @@ def expand_racing_segments(
         # feed must not also show up as the Qualifying/Race channel's
         # source. A stream whose name carries no such hint (a linear
         # channel's own branding, e.g. "HBO UK 065") keeps the full
-        # fan-out, unchanged from before.
+        # fan-out, unchanged from before — EXCEPT practice sessions, which
+        # are dropped from that fan-out rather than kept (see below).
         stream_name = match.get("stream", {}).get("name") or ""
         if category := _session_category_from_stream_name(stream_name):
             scoped = [s for s in sessions if _session_in_category(s.code, category)]
             if scoped:
                 sessions = scoped
+        else:
+            # Providers frequently don't carry a dedicated practice feed at
+            # all (coverage often starts at qualifying), so a generic
+            # whole-weekend stream landing on a Practice channel is more
+            # likely to produce a channel with nothing actually airing yet
+            # than a legitimate live source. Only include a practice
+            # session when the stream's own name specifically named it
+            # (handled by the scoping above); otherwise skip practice
+            # sessions in the full fan-out — better no channel than one
+            # that's dead air until qualifying starts.
+            sessions = [s for s in sessions if not _is_practice_session(s.code)]
 
         for session in sessions:
             start_time = session.start_time

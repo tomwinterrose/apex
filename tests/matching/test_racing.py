@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 from apex.consumers.matching.classifier import StreamCategory, classify_stream
 from apex.consumers.matching.racing_matcher import RacingMatchContext, RacingMatcher
 from apex.consumers.racing_segments import (
+    _is_practice_session,
     _isolate_stream_session_label,
     _parse_duration_from_name,
     _session_category_from_stream_name,
@@ -463,17 +464,31 @@ def test_expand_racing_segments_scopes_bare_qualifying_to_both_classes_and_hyper
     }
 
 
-def test_expand_racing_segments_keeps_full_fanout_for_generic_channel_name():
+def test_expand_racing_segments_keeps_full_fanout_for_generic_channel_name_excluding_practice():
+    # A generic/linear channel name still fans out across everything EXCEPT
+    # practice — providers rarely carry a dedicated practice feed, so a
+    # whole-weekend stream landing on a Practice channel is more likely to
+    # be dead air than a real source; better no channel than that.
     matched = [{
         "stream": {"id": 1, "name": "HBO UK 065|  6 HOURS OF SAO PAULO - FIA WEC | Round 5"},
         "event": _wec_event(),
     }]
     out = expand_racing_segments(matched)
     assert {m["segment"] for m in out} == {
-        "fp1", "fp2", "fp3",
         "qualifying_lmgt3", "hyperpole_lmgt3", "qualifying_hypercar", "hyperpole_hypercar",
         "race",
     }
+
+
+def test_expand_racing_segments_still_scopes_dedicated_practice_stream():
+    # The exception: a stream whose name specifically names a practice
+    # session still gets that session (already covered by
+    # test_expand_racing_segments_scopes_dedicated_fp3_stream, asserted
+    # again here alongside the generic-name exclusion for contrast).
+    matched = [{"stream": {"id": 1, "name": "AU (STAN) | Free Practice 2: 6 Hours of Sao Paulo"},
+                "event": _wec_event()}]
+    out = expand_racing_segments(matched)
+    assert [m["segment"] for m in out] == ["fp2"]
 
 
 def test_expand_racing_segments_falls_back_when_no_session_of_the_category_exists():
@@ -484,3 +499,29 @@ def test_expand_racing_segments_falls_back_when_no_session_of_the_category_exist
                 "event": _wec_event(sessions)}]
     out = expand_racing_segments(matched)
     assert len(out) == len(sessions)
+
+
+class TestIsPracticeSession:
+    def test_numbered_fp_codes(self):
+        assert _is_practice_session("fp1")
+        assert _is_practice_session("fp2")
+        assert _is_practice_session("fp3")
+
+    def test_bare_practice_code(self):
+        assert _is_practice_session("practice")
+
+    def test_non_practice_codes(self):
+        assert not _is_practice_session("qualifying")
+        assert not _is_practice_session("race")
+        assert not _is_practice_session("hyperpole_lmgt3")
+        assert not _is_practice_session("sprint")
+
+
+def test_expand_racing_segments_produces_no_channel_when_only_practice_exists():
+    # A single-session (practice-only) event matched by a generic stream:
+    # rather than land the stream on a Practice channel with nothing airing
+    # yet, no segment — and so no channel — should be produced at all.
+    sessions = [SimpleNamespace(code="practice", name="Practice", start_time=datetime(2026, 7, 11, 9, tzinfo=UTC))]
+    matched = [{"stream": {"id": 1, "name": "TSN+ 016"}, "event": _wec_event(sessions)}]
+    out = expand_racing_segments(matched)
+    assert out == []
