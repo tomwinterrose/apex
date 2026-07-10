@@ -3,7 +3,10 @@
 Expands racing events (F1, NASCAR, IndyCar, MotoGP, ...) into session-based
 channels (Practice 1, Practice 2, Qualifying, Race, ...). Each matched racing
 stream is expanded into one channel entry per session in `event.sessions`,
-using ESPN-provided session start times for exact EPG timing.
+using ESPN-provided session start times for exact EPG timing — UNLESS the
+stream's own name clearly names one specific session (e.g. "Free Practice
+3"), in which case it's scoped to just that session instead of fanning out
+across the whole weekend (see _session_category_from_stream_name).
 
 NASCAR-style single-session events (a single "race" session) degenerate to
 one segment via the same code path - no special-casing required.
@@ -14,6 +17,12 @@ import re
 from datetime import datetime, timedelta
 
 from apex.core.types import Event
+from apex.providers.tsdb.racing import (
+    _FREE_PRACTICE_RE,
+    _HYPERPOLE_RE,
+    _PROLOGUE_RE,
+    _QUALIFYING_RE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +124,85 @@ def _session_duration_hours(
     return SESSION_DURATION_HOURS.get(session_code, 1.0)
 
 
+# Session labels that don't need a regex (either fully generic words that
+# would be too risky to substring-match anywhere in a stream name, or short
+# fixed phrases the tsdb parser's regexes don't cover on their own).
+_EXACT_SESSION_LABELS = {
+    "race": "race",
+    "feature race": "race",
+    "sprint": "sprint",
+    "sprint race": "sprint",
+    "sprint qualifying": "sprint_qualifying",
+    "warm up": "warmup",
+    "warmup": "warmup",
+}
+
+
+def _isolate_stream_session_label(stream_name: str) -> str:
+    """Best-effort isolation of a session-label field from a stream name.
+
+    Provider-tagged racing streams are commonly shaped like
+    "<provider tag> | <Session Label>: <description> (<timestamp>)" (e.g.
+    "AU (STAN 36) | Free Practice 3: 6 Hours of Sao Paulo WEC 2026 (...)").
+    Taking the segment after the last "|" and before the first ":" isolates
+    just the label field, so keyword detection runs against a narrow,
+    structured slice instead of the whole noisy name — "Race" only counts as
+    a session label when it more or less stands alone, not when it's merely
+    a substring of some unrelated branding text.
+    """
+    segment = stream_name.rsplit("|", 1)[-1] if "|" in stream_name else stream_name
+    return segment.split(":", 1)[0].strip()
+
+
+def _session_category_from_stream_name(stream_name: str) -> str | None:
+    """Best-effort session-type CATEGORY from a stream's own name.
+
+    Reuses the same anchored regexes the TSDB parser uses to classify
+    session labels (apex/providers/tsdb/racing.py), applied to the
+    isolated label field instead of a full TSDB event name. Returns a
+    CATEGORY, not necessarily an exact `RacingSession.code` — a bare
+    "Qualifying" can't disambiguate "qualifying_hypercar" from
+    "qualifying_lmgt3", so it maps to a category that covers every session
+    of that type via `_session_in_category` below, rather than guessing
+    wrong and excluding one.
+
+    Returns None when the label doesn't clearly encode a session type
+    (the common case for a linear/whole-weekend channel's own name, e.g.
+    "HBO UK 065"), so callers can fall back to their existing full
+    session fan-out — this function is deliberately conservative to avoid
+    false negatives (a real session-specific stream getting excluded from
+    the one session channel it actually belongs on).
+    """
+    label = _isolate_stream_session_label(stream_name)
+    if not label:
+        return None
+    if category := _EXACT_SESSION_LABELS.get(label.lower()):
+        return category
+    if m := _FREE_PRACTICE_RE.match(label):
+        return f"fp{m.group(1)}" if m.group(1) else "practice"
+    if _QUALIFYING_RE.match(label):
+        return "qualifying"
+    if _HYPERPOLE_RE.match(label):
+        return "hyperpole"
+    if _PROLOGUE_RE.search(label):
+        return "prologue"
+    return None
+
+
+def _session_in_category(session_code: str, category: str) -> bool:
+    """True if `session_code` belongs to the coarse `category`.
+
+    Numbered practice sessions (fp1/fp2/fp3) must match exactly — a stream
+    labeled "Free Practice 3" names ONE specific session, not every
+    practice session. Everything else matches the category itself or any
+    class-suffixed variant (category="qualifying" covers both
+    "qualifying_hypercar" and "qualifying_lmgt3").
+    """
+    if category.startswith("fp"):
+        return session_code == category
+    return session_code == category or session_code.startswith(f"{category}_")
+
+
 def is_racing_event(event: Event | None) -> bool:
     """Check if event is a racing event with session data to expand."""
     if not event:
@@ -187,6 +275,18 @@ def expand_racing_segments(
 
         expanded_streams += 1
         sessions = sorted(event.sessions, key=lambda s: s.start_time)
+
+        # Scope to a single session (or session category) when the stream's
+        # own name clearly names one — e.g. a dedicated "Free Practice 3"
+        # feed must not also show up as the Qualifying/Race channel's
+        # source. A stream whose name carries no such hint (a linear
+        # channel's own branding, e.g. "HBO UK 065") keeps the full
+        # fan-out, unchanged from before.
+        stream_name = match.get("stream", {}).get("name") or ""
+        if category := _session_category_from_stream_name(stream_name):
+            scoped = [s for s in sessions if _session_in_category(s.code, category)]
+            if scoped:
+                sessions = scoped
 
         for session in sessions:
             start_time = session.start_time
