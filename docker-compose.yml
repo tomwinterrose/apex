@@ -4,12 +4,11 @@ services:
     ports:
       - "9198:9198"
     volumes:
-      # Deliberately kept as "vroomarr-data", not renamed to match the
-      # service — Compose treats a volume name change as a NEW empty volume,
-      # which would orphan any existing install's database. If you're
-      # migrating an existing vroomarr deployment, keep this name; only use
-      # "apex-data" for a genuinely fresh install.
-      - vroomarr-data:/app/data
+      # Migrating an existing vroomarr deployment? Compose treats a volume
+      # name change as a NEW empty volume, which would orphan your existing
+      # database — point this at your prior volume name (e.g.
+      # "vroomarr-data") instead of changing it here.
+      - apex-data:/app/data
     environment:
       - DISPATCHARR_URL=${DISPATCHARR_URL:-}
       - TSDB_API_KEY=${TSDB_API_KEY:-1}
@@ -18,4 +17,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  vroomarr-data:
+  apex-data:
