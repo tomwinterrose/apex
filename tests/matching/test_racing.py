@@ -316,8 +316,16 @@ def _wec_sessions():
             start_time=base + timedelta(hours=12),
         ),
         SimpleNamespace(
+            code="hyperpole_lmgt3", name="Hyperpole - LMGT3",
+            start_time=base + timedelta(hours=12, minutes=30),
+        ),
+        SimpleNamespace(
             code="qualifying_hypercar", name="Qualifying - Hypercar",
             start_time=base + timedelta(hours=13),
+        ),
+        SimpleNamespace(
+            code="hyperpole_hypercar", name="Hyperpole - Hypercar",
+            start_time=base + timedelta(hours=13, minutes=30),
         ),
         SimpleNamespace(code="race", name="Race", start_time=base + timedelta(days=1)),
     ]
@@ -382,6 +390,17 @@ class TestSessionInCategory:
         assert _session_in_category("qualifying_hypercar", "qualifying")
         assert not _session_in_category("fp1", "qualifying")
 
+    def test_qualifying_category_also_covers_hyperpole(self):
+        # WEC's Hyperpole is itself a qualifying shootout, and providers
+        # rarely label it distinctly — a bare "Qualifying" stream is a real
+        # candidate for a Hyperpole session too.
+        assert _session_in_category("hyperpole_lmgt3", "qualifying")
+        assert _session_in_category("hyperpole_hypercar", "qualifying")
+        assert _session_in_category("hyperpole", "qualifying")
+        # But a stream explicitly labeled "Hyperpole" stays scoped to
+        # hyperpole sessions only — narrowing is not symmetric.
+        assert not _session_in_category("qualifying_lmgt3", "hyperpole")
+
 
 def test_expand_racing_segments_scopes_dedicated_fp3_stream():
     matched = [{"stream": {"id": 1, "name": "AU (STAN) | Free Practice 3: 6 Hours of Sao Paulo"},
@@ -390,11 +409,13 @@ def test_expand_racing_segments_scopes_dedicated_fp3_stream():
     assert [m["segment"] for m in out] == ["fp3"]
 
 
-def test_expand_racing_segments_scopes_bare_qualifying_to_both_classes():
+def test_expand_racing_segments_scopes_bare_qualifying_to_both_classes_and_hyperpole():
     matched = [{"stream": {"id": 1, "name": "AU (STAN) | Qualifying: 6 Hours of Sao Paulo"},
                 "event": _wec_event()}]
     out = expand_racing_segments(matched)
-    assert {m["segment"] for m in out} == {"qualifying_lmgt3", "qualifying_hypercar"}
+    assert {m["segment"] for m in out} == {
+        "qualifying_lmgt3", "qualifying_hypercar", "hyperpole_lmgt3", "hyperpole_hypercar",
+    }
 
 
 def test_expand_racing_segments_keeps_full_fanout_for_generic_channel_name():
@@ -404,7 +425,9 @@ def test_expand_racing_segments_keeps_full_fanout_for_generic_channel_name():
     }]
     out = expand_racing_segments(matched)
     assert {m["segment"] for m in out} == {
-        "fp1", "fp2", "fp3", "qualifying_lmgt3", "qualifying_hypercar", "race",
+        "fp1", "fp2", "fp3",
+        "qualifying_lmgt3", "hyperpole_lmgt3", "qualifying_hypercar", "hyperpole_hypercar",
+        "race",
     }
 
 

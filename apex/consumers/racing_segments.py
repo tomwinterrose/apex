@@ -197,9 +197,19 @@ def _session_in_category(session_code: str, category: str) -> bool:
     practice session. Everything else matches the category itself or any
     class-suffixed variant (category="qualifying" covers both
     "qualifying_hypercar" and "qualifying_lmgt3").
+
+    A bare "qualifying" category also covers hyperpole sessions: WEC's
+    Hyperpole is itself a qualifying-shootout round, and providers rarely
+    label it distinctly from regular qualifying — a stream generically
+    labeled "Qualifying" is a real candidate for a Hyperpole session too,
+    not just an exact-name "qualifying_*" one.
     """
     if category.startswith("fp"):
         return session_code == category
+    if category == "qualifying" and (
+        session_code == "hyperpole" or session_code.startswith("hyperpole_")
+    ):
+        return True
     return session_code == category or session_code.startswith(f"{category}_")
 
 
