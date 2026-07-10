@@ -8,7 +8,7 @@ docs_version: "2.3.1"
 
 # Deployment
 
-Configuration and operational reference for running Teamarr.
+Configuration and operational reference for running Apex.
 
 | Page | Contents |
 |------|----------|

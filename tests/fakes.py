@@ -126,7 +126,7 @@ class FakeManagedChannel:
     dispatcharr_uuid: str = "uuid-100"
     channel_name: str = "Test Channel"
     channel_number: str = "5001"
-    tvg_id: str = "vroomarr-event-123"
+    tvg_id: str = "apex-event-123"
     event_id: str = "123"
     event_epg_group_id: int = 1
     channel_group_id: int = 10
@@ -170,7 +170,7 @@ class FakeSubscription:
 
 def make_team_matcher(service=None, cache=None, *, db_factory=None, days_ahead=3):
     """Real TeamMatcher via its constructor (db_factory=None → empty alias caches)."""
-    from teamarr.consumers.matching.team_matcher import TeamMatcher
+    from apex.consumers.matching.team_matcher import TeamMatcher
 
     return TeamMatcher(service, cache, db_factory=db_factory, days_ahead=days_ahead)
 
@@ -192,7 +192,7 @@ def make_stream_matcher(
     """
     from zoneinfo import ZoneInfo
 
-    from teamarr.consumers.matching.matcher import StreamMatcher
+    from apex.consumers.matching.matcher import StreamMatcher
 
     m = StreamMatcher(
         service=None,
@@ -213,7 +213,7 @@ def make_stream_matcher(
 def make_bare_processor(**attrs):
     """EventGroupProcessor without running __init__ (which needs a live DB and
     service). Set only the attributes the test actually touches."""
-    from teamarr.consumers.event_group_processor import EventGroupProcessor
+    from apex.consumers.event_group_processor import EventGroupProcessor
 
     proc = object.__new__(EventGroupProcessor)
     for k, v in attrs.items():

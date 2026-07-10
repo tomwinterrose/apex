@@ -18,7 +18,7 @@ Each condition option has:
 - **Priority**: Lower numbers = higher priority (1-99 for conditionals, 100 for defaults)
 - **Template**: The description to use if the condition matches
 
-When generating EPG, Teamarr evaluates all conditions and selects the highest-priority (lowest number) match. If multiple conditions match at the same priority, one is chosen randomly.
+When generating EPG, Apex evaluates all conditions and selects the highest-priority (lowest number) match. If multiple conditions match at the same priority, one is chosen randomly.
 
 ## Priority System
 

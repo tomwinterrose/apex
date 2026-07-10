@@ -50,11 +50,11 @@ See [Game Thumbs](../game-thumbs) for setup instructions and hosted options.
 2. Open the file and replace `<game-thumbs-base-url>` with your Game Thumbs URL:
    - Self-hosted: `http://your-server:port`
    - Hosted options: See [Game Thumbs](../game-thumbs#hosted-instances)
-3. In Teamarr, go to **Templates** and click **Import**
+3. In Apex, go to **Templates** and click **Import**
 4. Select your modified JSON file
 
 ---
 
 ## Contributing Templates
 
-Have a template you'd like to share? Join the Dispatcharr Discord and share it in the Teamarr channel.
+Have a template you'd like to share? Join the Dispatcharr Discord and share it in the Apex channel.

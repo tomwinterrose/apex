@@ -7,13 +7,13 @@ docs_version: "2.3.0"
 
 # Teams
 
-Team-based EPG produces one persistent **XMLTV channel** per team in the guide Teamarr writes. Teamarr does *not* create a Dispatcharr channel for each team — that's only done for event-based workflows. Instead, you point one of your existing Dispatcharr channels at the team's XMLTV channel id (via Dispatcharr's normal EPG association), and Teamarr keeps that XMLTV channel populated with the team's schedule — upcoming games, live events, and recent results.
+Team-based EPG produces one persistent **XMLTV channel** per team in the guide Apex writes. Apex does *not* create a Dispatcharr channel for each team — that's only done for event-based workflows. Instead, you point one of your existing Dispatcharr channels at the team's XMLTV channel id (via Dispatcharr's normal EPG association), and Apex keeps that XMLTV channel populated with the team's schedule — upcoming games, live events, and recent results.
 
 ## How It Works
 
 1. Import teams from the league cache
 2. Assign a **team template** to each team
-3. Teamarr looks up each team's schedule and writes EPG programmes for that team's XMLTV channel
+3. Apex looks up each team's schedule and writes EPG programmes for that team's XMLTV channel
 
 Each team's EPG includes:
 - **Pregame** programmes before the game starts

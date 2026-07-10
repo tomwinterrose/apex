@@ -46,8 +46,8 @@ Thumbs.db
 docs/reference/providers/tsdb-api.md
 CLAUDE.md
 DEVELOPMENT.md
-teamarr.xml
-teamarr.xml.bak
+apex.xml
+apex.xml.bak
 data/
 !data/tsdb_seed.json
 

@@ -498,7 +498,7 @@ export function Teams() {
       {/* What is Team EPG — info tile */}
       <Alert variant="info" title="What is Team EPG?">
         A secondary flow for teams you already have static channels for in Dispatcharr.
-        Vroomarr generates guide data (a team-only EPG) for them but does <strong>not</strong>{" "}
+        Apex generates guide data (a team-only EPG) for them but does <strong>not</strong>{" "}
         create or manage these channels — it just fills in their EPG. Most setups rely on
         event-based matching from Sources instead.
       </Alert>

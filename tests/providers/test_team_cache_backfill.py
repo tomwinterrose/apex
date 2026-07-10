@@ -15,9 +15,9 @@ from unittest.mock import patch
 
 import pytest
 
-from teamarr.core.types import Event, EventStatus, Team
-from teamarr.database.connection import get_db, init_db
-from teamarr.services.sports_data import (
+from apex.core.types import Event, EventStatus, Team
+from apex.database.connection import get_db, init_db
+from apex.services.sports_data import (
     _TEAM_IDENTITY_MEMO,
     _backfill_team_from_cache,
     _enrich_event_teams,
@@ -140,7 +140,7 @@ class TestBackfillTeam:
             league="mlb",
             sport="Baseball",
         )
-        with patch("teamarr.services.sports_data.get_db", side_effect=Exception("nope")):
+        with patch("apex.services.sports_data.get_db", side_effect=Exception("nope")):
             result = _backfill_team_from_cache(team, "mlb")
         # Lookup failed → original team returned unchanged.
         assert result is team

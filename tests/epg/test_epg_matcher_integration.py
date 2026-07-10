@@ -1,4 +1,4 @@
-"""Integration tests for the EPG path in StreamMatcher (teamarrv2-183.4).
+"""Integration tests for the EPG path in StreamMatcher (apexv2-183.4).
 
 We exercise the EPG-specific orchestration methods (_match_via_epg,
 _reconcile_epg) on a matcher built with no service/DB, patching the shared
@@ -9,11 +9,11 @@ fan-out, and reconciliation.
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 
-from teamarr.consumers.matching.classifier import StreamCategory
-from teamarr.consumers.matching.epg_index import EPGProgramIndex
-from teamarr.consumers.matching.matcher import MatchedStreamResult
-from teamarr.consumers.matching.result import MatchMethod, MatchOutcome
-from teamarr.dispatcharr.types import DispatcharrProgram
+from apex.consumers.matching.classifier import StreamCategory
+from apex.consumers.matching.epg_index import EPGProgramIndex
+from apex.consumers.matching.matcher import MatchedStreamResult
+from apex.consumers.matching.result import MatchMethod, MatchOutcome
+from apex.dispatcharr.types import DispatcharrProgram
 from tests.fakes import make_stream_matcher
 
 BASE = datetime(2026, 6, 1, 18, tzinfo=UTC)
@@ -263,7 +263,7 @@ def test_epg_racing_fallback_nascar_at_city(monkeypatch):
     monkeypatch.setattr(m, "_route_to_outcomes",
         lambda c, sid, td, anchor_dt=None: [MatchOutcome.failed(None)])
     monkeypatch.setattr(m, "_match_racing_event",
-        lambda classified, sid, td: _racing_matched_outcome())
+        lambda classified, sid, td, anchor_dt=None: _racing_matched_outcome())
     monkeypatch.setattr(m, "_outcome_to_result", lambda outcome, **kw: outcome)
 
     out = m._match_via_epg(100, "ESPN", "espn", date(2026, 6, 1))
@@ -290,7 +290,7 @@ def test_epg_racing_fallback_f1_team_only(monkeypatch):
     monkeypatch.setattr(
         m,
         "_match_racing_event",
-        lambda classified, sid, td: MatchOutcome.matched(
+        lambda classified, sid, td, anchor_dt=None: MatchOutcome.matched(
             MatchMethod.FUZZY, event=race_ev, confidence=0.9
         ),
     )
@@ -355,7 +355,7 @@ def test_epg_racing_fallback_uses_racing_classification_in_result(monkeypatch):
     monkeypatch.setattr(m, "_route_to_outcomes",
         lambda c, sid, td, anchor_dt=None: [MatchOutcome.failed(None)])
     monkeypatch.setattr(m, "_match_racing_event",
-        lambda classified, sid, td: _racing_matched_outcome())
+        lambda classified, sid, td, anchor_dt=None: _racing_matched_outcome())
     captured = {}
     def capture_result(outcome, *, stream_id, stream_name, classified):
         captured["category"] = classified.category
@@ -371,7 +371,7 @@ def test_epg_racing_fallback_uses_racing_classification_in_result(monkeypatch):
 
 
 def test_epg_racing_fallback_requires_text_evidence(monkeypatch):
-    # teamarrv2-w42k: with league_event_type="event", RACING_EVENT is the
+    # apexv2-w42k: with league_event_type="event", RACING_EVENT is the
     # classifier's default bucket, so without a text gate ANY unmatched
     # programme (documentary, movie) reaches the racing matcher and can bind
     # to the day's race by date coverage — one run produced 853 false
@@ -385,10 +385,49 @@ def test_epg_racing_fallback_requires_text_evidence(monkeypatch):
         lambda c, sid, td, anchor_dt=None: [MatchOutcome.failed(None)])
     racing_called = []
     monkeypatch.setattr(m, "_match_racing_event",
-        lambda classified, sid, td: racing_called.append(1) or _racing_matched_outcome())
+        lambda classified, sid, td, anchor_dt=None: racing_called.append(1) or _racing_matched_outcome())
     monkeypatch.setattr(m, "_outcome_to_result", lambda outcome, **kw: outcome)
 
     out = m._match_via_epg(100, "US: Smithsonian Channel", "espn", date(2026, 6, 1))
 
     assert racing_called == []  # racing matcher never consulted
     assert out == []
+
+
+def test_epg_primary_racing_requires_text_evidence_in_racing_only_group(monkeypatch):
+    # A racing-ONLY group (e.g. a dedicated motorsports group) makes
+    # _get_dominant_event_type() return "event" directly, so the PRIMARY
+    # classify_stream call in _match_via_epg already defaults an unrelated
+    # programme to RACING_EVENT — the fallback's text-evidence gate never
+    # even runs, since the primary route already "succeeds". This is the
+    # same false-positive class as the fallback bug (apexv2-w42k), just on
+    # a different linear channel (e.g. a local PBS affiliate airing a
+    # documentary during a race weekend, with no relation to the event).
+    prog = _prog(title="Nature", sub="Wolves of Yellowstone")
+    index = EPGProgramIndex({"pbs": [prog]})
+    m = _bare_matcher(index, team_streams_enabled=True, racing_leagues=("wec",))
+    racing_called = []
+    monkeypatch.setattr(m, "_match_racing_event",
+        lambda classified, sid, td, anchor_dt=None: racing_called.append(1) or _racing_matched_outcome())
+    monkeypatch.setattr(m, "_outcome_to_result", lambda outcome, **kw: outcome)
+
+    out = m._match_via_epg(100, "PBS Affiliate", "pbs", date(2026, 6, 1))
+
+    assert racing_called == []  # racing matcher never consulted
+    assert out == []
+
+
+def test_epg_primary_racing_matches_wec_title_with_series_name(monkeypatch):
+    # The legitimate case the gate must NOT break: a genuine WEC programme
+    # (series name present) in a racing-only group should still match.
+    prog = _prog(title="WEC", sub="6 Hours of Spa - Free Practice 1")
+    index = EPGProgramIndex({"wec-chan": [prog]})
+    m = _bare_matcher(index, team_streams_enabled=True, racing_leagues=("wec",))
+    monkeypatch.setattr(m, "_match_racing_event",
+        lambda classified, sid, td, anchor_dt=None: _racing_matched_outcome())
+    monkeypatch.setattr(m, "_outcome_to_result", lambda outcome, **kw: outcome)
+
+    out = m._match_via_epg(100, "WEC Channel", "wec-chan", date(2026, 6, 1))
+
+    assert len(out) == 1
+    assert out[0].event.id == "race1"

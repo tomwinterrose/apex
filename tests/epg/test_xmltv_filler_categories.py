@@ -13,9 +13,9 @@ import json
 import sqlite3
 from pathlib import Path
 
-from teamarr.database.connection import init_db
-from teamarr.database.migrations import _run_migrations
-from teamarr.database.templates import Template, _row_to_template
+from apex.database.connection import init_db
+from apex.database.migrations import _run_migrations
+from apex.database.templates import Template, _row_to_template
 
 # ===========================================================================
 # Migration: v71 → v72 splits the shared list correctly
@@ -124,7 +124,7 @@ class TestFillerConfigSourcing:
     def test_event_filler_config_independent_lists(self):
         """template_to_event_filler_config builds filler config that uses
         xmltv_filler_categories, not the event-side xmltv_categories."""
-        from teamarr.consumers.filler.event_filler import (
+        from apex.consumers.filler.event_filler import (
             template_to_event_filler_config,
         )
 
@@ -139,7 +139,7 @@ class TestFillerConfigSourcing:
         assert config.xmltv_categories == ["Series", "Filler"]
 
     def test_event_filler_empty_filler_categories(self):
-        from teamarr.consumers.filler.event_filler import (
+        from apex.consumers.filler.event_filler import (
             template_to_event_filler_config,
         )
 
@@ -155,7 +155,7 @@ class TestFillerConfigSourcing:
 
     def test_team_filler_config_uses_filler_list(self):
         """template_to_filler_config (team templates) also reads filler list."""
-        from teamarr.database.templates import template_to_filler_config
+        from apex.database.templates import template_to_filler_config
 
         template = Template(
             id=1,

@@ -1,4 +1,4 @@
-"""Tests for stream-level disabled-group cleanup (teamarrv2-5xou).
+"""Tests for stream-level disabled-group cleanup (apexv2-5xou).
 
 Disabling a source group must detach only that group's streams and delete a
 channel only when nothing else feeds it — so consolidated/multi-source channels
@@ -14,7 +14,7 @@ from tests.fakes import FakeChannel, FakeGroup, FakeStream
 
 @pytest.fixture
 def service():
-    from teamarr.consumers.lifecycle.service import ChannelLifecycleService
+    from apex.consumers.lifecycle.service import ChannelLifecycleService
 
     svc = ChannelLifecycleService(
         db_factory=MagicMock(),
@@ -30,18 +30,18 @@ def service():
 def _run(service, groups, channels_for_group, streams_by_channel):
     with (
         patch(
-            "teamarr.database.groups.get_all_groups",
+            "apex.database.groups.get_all_groups",
             return_value=groups,
         ),
         patch(
-            "teamarr.database.channels.get_managed_channels_for_group",
+            "apex.database.channels.get_managed_channels_for_group",
             side_effect=lambda conn, gid, include_deleted=False: channels_for_group.get(gid, []),
         ),
         patch(
-            "teamarr.database.channels.get_channel_streams",
+            "apex.database.channels.get_channel_streams",
             side_effect=lambda conn, cid, include_removed=False: streams_by_channel.get(cid, []),
         ),
-        patch("teamarr.database.channels.remove_stream_from_channel") as rm,
+        patch("apex.database.channels.remove_stream_from_channel") as rm,
     ):
         result = service.cleanup_disabled_groups()
     return result, rm

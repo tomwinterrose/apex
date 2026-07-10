@@ -16,9 +16,9 @@ league, sport, and other identity/static fields are preserved verbatim.
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-from teamarr.core.types import Event, EventStatus, Team
-from teamarr.services.sports_data import SportsDataService
-from teamarr.utilities.cache import make_cache_key
+from apex.core.types import Event, EventStatus, Team
+from apex.services.sports_data import SportsDataService
+from apex.utilities.cache import make_cache_key
 
 
 def _make_event(status_state: str = "scheduled", **overrides) -> Event:

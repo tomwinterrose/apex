@@ -1,5 +1,5 @@
 /**
- * API client for Vroomarr backend.
+ * API client for Apex backend.
  */
 
 const API_BASE = "/api/v1"

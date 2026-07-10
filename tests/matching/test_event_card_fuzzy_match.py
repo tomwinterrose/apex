@@ -11,8 +11,8 @@ from datetime import date
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
-from teamarr.consumers.matching.event_matcher import EventCardMatcher, EventMatchContext
-from teamarr.consumers.matching.result import MatchMethod
+from apex.consumers.matching.event_matcher import EventCardMatcher, EventMatchContext
+from apex.consumers.matching.result import MatchMethod
 
 
 def _ctx(stream_name: str) -> EventMatchContext:

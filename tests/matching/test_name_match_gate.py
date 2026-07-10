@@ -12,7 +12,7 @@ import sqlite3
 from datetime import date
 from unittest.mock import MagicMock
 
-from teamarr.consumers.matching.matcher import StreamMatcher
+from apex.consumers.matching.matcher import StreamMatcher
 from tests.helpers import SCHEMA_PATH
 
 SCHEMA = SCHEMA_PATH
@@ -79,7 +79,7 @@ def test_require_matching_type_rejects_all_off():
     import pytest
     from fastapi import HTTPException
 
-    from teamarr.api.routes.groups import require_matching_type
+    from apex.api.routes.groups import require_matching_type
 
     with pytest.raises(HTTPException) as exc:
         require_matching_type(False, False, False)
@@ -87,7 +87,7 @@ def test_require_matching_type_rejects_all_off():
 
 
 def test_require_matching_type_accepts_any_single():
-    from teamarr.api.routes.groups import require_matching_type
+    from apex.api.routes.groups import require_matching_type
 
     require_matching_type(True, False, False)  # name only
     require_matching_type(False, True, False)  # team only

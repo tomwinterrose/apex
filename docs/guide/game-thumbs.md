@@ -9,7 +9,7 @@ docs_version: "2.3.0"
 
 [Game Thumbs](https://github.com/sethwv/game-thumbs) is an optional external service by [@sethwv](https://github.com/sethwv) for sports matchup thumbnail and logo generation.
 
-Teamarr templates can use Game Thumbs URLs in artwork fields to display matchup images with team logos.
+Apex templates can use Game Thumbs URLs in artwork fields to display matchup images with team logos.
 
 ## Base URL setting
 
@@ -35,7 +35,7 @@ The live template preview applies the same base URL, so the artwork you see whil
 editing matches the generated EPG.
 
 {: .note }
-**Upgrading?** On first launch after this feature lands, Teamarr inspects your
+**Upgrading?** On first launch after this feature lands, Apex inspects your
 existing templates: if they share a common Game Thumbs host it's adopted as your
 base URL automatically and the template art is converted to relative paths. If
 your templates span multiple hosts, the most common one wins and the others stay

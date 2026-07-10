@@ -7,8 +7,8 @@ docs_version: "2.7.0"
 
 # Gracenote-Modeled Best-in-Class Templates — Design & Research
 
-Reference + design spec for the curated default templates (epic `teamarrv2-tvnk`).
-Captures everything learned modeling Teamarr EPG output on authoritative Gracenote
+Reference + design spec for the curated default templates (epic `apexv2-tvnk`).
+Captures everything learned modeling Apex EPG output on authoritative Gracenote
 data across sports, the available data sources, the confirmed gaps, and the
 resulting template/scoping/fallback design.
 
@@ -56,7 +56,7 @@ The structured **subtitle** ("Group C: Scotland vs. Morocco") *is* present days 
 | **Event thumb/video** | TSDB `strThumb`/`strVideo` | per-call | ⚠️ sparse | sparse |
 
 **Takeaways:**
-- `{game_recap}` + `{game_note}`/`{round}` are **free** from the scoreboard Teamarr
+- `{game_recap}` + `{game_note}`/`{round}` are **free** from the scoreboard Apex
   already fetches — high value, no extra calls.
 - ESPN **preview prose is not viable** (same-day + US-pro only → blank across the
   14-day EPG window). Pregame previews must be **templated from structured data**.

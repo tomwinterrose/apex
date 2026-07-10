@@ -90,7 +90,7 @@ Declare scope on the decorator:
 | **Standings** | 4 | playoff_seed, games_back |
 | **Playoffs** | 4 | is_playoff, is_preseason, season_type |
 
-Variables are registered via decorator in `teamarr/templates/variables/` (one file per category).
+Variables are registered via decorator in `apex/templates/variables/` (one file per category).
 
 ## Condition Evaluators
 

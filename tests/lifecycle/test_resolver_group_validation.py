@@ -1,4 +1,4 @@
-"""Regression tests for stale channel-group handling (bead teamarrv2-nr7).
+"""Regression tests for stale channel-group handling (bead apexv2-nr7).
 
 A configured static/per-league channel group that was deleted in Dispatcharr
 must not fail every channel creation ("Invalid pk … object does not exist" → 0
@@ -6,7 +6,7 @@ channels). The resolver drops a stale group id to ungrouped (None) so channels
 are still created, but only when it actually knows the current groups.
 """
 
-from teamarr.consumers.lifecycle.dynamic_resolver import DynamicResolver
+from apex.consumers.lifecycle.dynamic_resolver import DynamicResolver
 
 
 def _resolver(known_ids: set[int], loaded: bool) -> DynamicResolver:

@@ -21,11 +21,11 @@ Match static-named linear channels (ESPN, FS1, NBA1) to events using Dispatcharr
 
 ## The problem it solves
 
-Teamarr normally matches a stream to an event by reading the **stream name** — `Cubs vs Cardinals` becomes the Cubs–Cardinals game. That works for event-named streams, but a traditional **linear channel** carries many different games across a day under one unchanging name:
+Apex normally matches a stream to an event by reading the **stream name** — `Cubs vs Cardinals` becomes the Cubs–Cardinals game. That works for event-named streams, but a traditional **linear channel** carries many different games across a day under one unchanging name:
 
 > `Fox Sports 1` airs *Wales vs Ghana* at 1pm, an *MLB* game at 4pm, and *College Baseball* at 8pm — all under the single stream name "Fox Sports 1".
 
-The stream name `Fox Sports 1` tells Teamarr nothing about which game is on, so name matching can't place it. **EPG program matching** solves this by reading the channel's **program guide** instead of its name, and attaching the linear stream to each event's channel only for that game's window.
+The stream name `Fox Sports 1` tells Apex nothing about which game is on, so name matching can't place it. **EPG program matching** solves this by reading the channel's **program guide** instead of its name, and attaching the linear stream to each event's channel only for that game's window.
 
 The result: **one** linear stream serves **many** event channels — swapping in shortly before each game and out shortly after — while each event channel keeps its own stable identity, generated EPG, and filler.
 
@@ -33,28 +33,28 @@ The result: **one** linear stream serves **many** event channels — swapping in
 
 ## How it works
 
-1. **Read the guide.** For each opted-in group, Teamarr asks Dispatcharr for the EPG **programs** airing on the group's streams (`GET /api/epg/programs/search/`).
-2. **Match program titles, not stream names.** Each program's title + subtitle (`MLB Baseball` + `Cubs at Cardinals`) goes through the *same* team-matching pipeline Teamarr uses for stream names, and is matched to a real event.
+1. **Read the guide.** For each opted-in group, Apex asks Dispatcharr for the EPG **programs** airing on the group's streams (`GET /api/epg/programs/search/`).
+2. **Match program titles, not stream names.** Each program's title + subtitle (`MLB Baseball` + `Cubs at Cardinals`) goes through the *same* team-matching pipeline Apex uses for stream names, and is matched to a real event.
 3. **Time-share the stream.** A linear stream that airs many programs is attached to each matched event's channel only for that program's window (start − *attach before*, end + *detach after*), then detached when the window ends. Studio shows and replays are skipped.
 
 ### Where the EPG comes from — you don't map it
 
-The program data comes from **Dispatcharr's own EPG sources** — the XMLTV guides you already configured in Dispatcharr. **You do not tell Teamarr which EPG belongs to which group.** Teamarr links each stream to its guide automatically using a precedence cascade (most authoritative first):
+The program data comes from **Dispatcharr's own EPG sources** — the XMLTV guides you already configured in Dispatcharr. **You do not tell Apex which EPG belongs to which group.** Apex links each stream to its guide automatically using a precedence cascade (most authoritative first):
 
 | # | Strategy | When it applies |
 |---|----------|-----------------|
 | 1 | **Channel mapping** | The stream is assigned to a Dispatcharr channel whose EPG is linked (`epg_data_id`). A *curated* mapping — the most trusted, so it wins outright. |
 | 2 | **Direct tvg_id** | Your M3U stream's `tvg-id` already matches an **active** imported EPG channel id (namespace-aligned setups). |
 | 3 | **Name match** | The stream's name matches an **active** imported EPG channel's name exactly after normalization (stripping `HD`/`FHD`/`(US)`, country prefixes like `US:`/`UK:`, etc.). **Strict:** ambiguous names are skipped, so `ESPN` never resolves to `ESPN2`. |
-| 4 | **Xtream (XC) provider EPG** | *Opt-in fallback.* For streams the above leave unmatched, when the group's M3U account is an Xtream Codes panel, Teamarr fetches the provider's **own** `xmltv.php` and matches against it. See [Xtream fallback](#xtream-xc-provider-epg-fallback). |
+| 4 | **Xtream (XC) provider EPG** | *Opt-in fallback.* For streams the above leave unmatched, when the group's M3U account is an Xtream Codes panel, Apex fetches the provider's **own** `xmltv.php` and matches against it. See [Xtream fallback](#xtream-xc-provider-epg-fallback). |
 
-Strategies 2–3 match against your **active** imported EPG sources only (disabled sources and Teamarr's own `_Teamarr` output are excluded). They mean EPG matching works on **raw stream groups** — you do **not** need to pre-build streams into Dispatcharr channels first.
+Strategies 2–3 match against your **active** imported EPG sources only (disabled sources and Apex's own `_Apex` output are excluded). They mean EPG matching works on **raw stream groups** — you do **not** need to pre-build streams into Dispatcharr channels first.
 
 ### Xtream (XC) provider EPG fallback
 
 Strategies 1–3 require a valid stream-to-EPG mapping **inside Dispatcharr**. Many providers' channels — especially **regional sports networks** — have no guide in your imported sources, so they never match.
 
-As a backup, enable **Settings → Event Groups → "Fall back to Xtream (XC) provider EPG"**. When a group's M3U account is an Xtream Codes panel, Teamarr fetches that provider's own EPG (`{server}/xmltv.php`) directly and matches the still-unresolved streams against it. Because the provider's guide is **source-matched** to its own M3U, the stream `tvg-id` *is* the guide channel id — an exact match, no guessing.
+As a backup, enable **Settings → Event Groups → "Fall back to Xtream (XC) provider EPG"**. When a group's M3U account is an Xtream Codes panel, Apex fetches that provider's own EPG (`{server}/xmltv.php`) directly and matches the still-unresolved streams against it. Because the provider's guide is **source-matched** to its own M3U, the stream `tvg-id` *is* the guide channel id — an exact match, no guessing.
 
 - **Off by default** (opt-in). It downloads the provider's guide once per XC account and caches it on disk, re-fetching only when the cache is older than **Cache for (hours)** (default 24). Provider guides change slowly, so a long cache keeps generations fast.
 - It only **fills gaps** — your curated Dispatcharr guide always takes priority.
@@ -64,21 +64,21 @@ As a backup, enable **Settings → Event Groups → "Fall back to Xtream (XC) pr
 
 Normally each Event Group sources its candidate streams from an **M3U group** — so EPG matching considers *every* stream in that provider group. If you'd rather match only the channel versions you've **already curated in Dispatcharr**, enable **Settings → Event Groups → "Use Dispatcharr channels as an EPG source"**.
 
-When on, Teamarr adds a second, **additive** source that:
+When on, Apex adds a second, **additive** source that:
 
-- Enumerates the Dispatcharr **channels** you've mapped that carry an active, non-`_Teamarr` EPG link.
+- Enumerates the Dispatcharr **channels** you've mapped that carry an active, non-`_Apex` EPG link.
 - Takes the **streams assigned to each channel** as candidates, tagged with that **channel's own EPG** (strategy 1 — the most authoritative mapping).
 - Runs them through the same matching → channel-creation → time-window pipeline.
 
-It runs **alongside** your per-group M3U matching (not instead of it); matches are consolidated onto the same event channels by event identity. Teamarr's **own generated channels are excluded** — they're output, not input. The source is managed for you as a hidden system group ("Dispatcharr Channels") that appears in stats but not in the Event Groups list; created channels use your global/per-league channel-group, profile, and template defaults.
+It runs **alongside** your per-group M3U matching (not instead of it); matches are consolidated onto the same event channels by event identity. Apex's **own generated channels are excluded** — they're output, not input. The source is managed for you as a hidden system group ("Dispatcharr Channels") that appears in stats but not in the Event Groups list; created channels use your global/per-league channel-group, profile, and template defaults.
 
-**Scope it to specific groups.** When you enable the toggle, a **Dispatcharr groups to include** picker appears. Select the channel groups you actually want matched — Teamarr then scans only those, skipping the matching work for everything else (faster generation). Leave it empty to include all groups. Your selection also becomes a **Dispatcharr Group** option in [stream ordering](settings/channels.md#stream-ordering), so you can prioritize a group's streams within consolidated channels.
+**Scope it to specific groups.** When you enable the toggle, a **Dispatcharr groups to include** picker appears. Select the channel groups you actually want matched — Apex then scans only those, skipping the matching work for everything else (faster generation). Leave it empty to include all groups. Your selection also becomes a **Dispatcharr Group** option in [stream ordering](settings/channels.md#stream-ordering), so you can prioritize a group's streams within consolidated channels.
 
 ---
 
 ## Requirements
 
-- **Dispatcharr with the program-search API** — `GET /api/epg/programs/search/`, **confirmed on Dispatcharr `0.24.0`**. Teamarr feature-detects this on connect; on older builds the feature simply stays off (the toggle has no effect), with no errors.
+- **Dispatcharr with the program-search API** — `GET /api/epg/programs/search/`, **confirmed on Dispatcharr `0.24.0`**. Apex feature-detects this on connect; on older builds the feature simply stays off (the toggle has no effect), with no errors.
 - **A configured EPG source in Dispatcharr** whose guide covers your linear channels.
 - A stream resolvable to that guide by one of strategies 1–3 above — or, with the opt-in Xtream fallback, an XC provider whose own EPG covers it. Streams that resolve to nothing are left to normal name matching.
 

@@ -29,7 +29,7 @@ interface OrphansDialogProps {
 }
 
 /**
- * Find Orphans modal — lists Dispatcharr channels not tracked by Vroomarr and
+ * Find Orphans modal — lists Dispatcharr channels not tracked by Apex and
  * lets the user delete them one-by-one or all at once.
  *
  * The content (and its reconciliation query) mounts only while the dialog is
@@ -118,7 +118,7 @@ function OrphansContent({ onClose }: { onClose: () => void }) {
           Orphan Channels
         </DialogTitle>
         <DialogDescription>
-          Channels in Dispatcharr that aren't tracked by Vroomarr
+          Channels in Dispatcharr that aren't tracked by Apex
         </DialogDescription>
       </DialogHeader>
 
@@ -134,7 +134,7 @@ function OrphansContent({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-muted-foreground">
               Found {orphanChannels.length} orphan channel
               {orphanChannels.length > 1 ? "s" : ""}. These exist in Dispatcharr but
-              aren't tracked by Vroomarr.
+              aren't tracked by Apex.
             </p>
             <div className="max-h-[50vh] overflow-y-auto">
             <Table>

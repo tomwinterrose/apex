@@ -12,8 +12,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from teamarr.core import SEASON_POSTSEASON, SEASON_REGULAR
-from teamarr.providers.squiggle.provider import SquiggleProvider
+from apex.core import SEASON_POSTSEASON, SEASON_REGULAR
+from apex.providers.squiggle.provider import SquiggleProvider
 
 TEAMS = [
     {"id": 1, "name": "Richmond", "abbrev": "RIC", "logo": "/logos/ric.png"},

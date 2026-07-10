@@ -1,6 +1,6 @@
 """Tests for the team filter master toggle (settings.team_filter_enabled).
 
-Bead `teamarrv2-zer`: when the global toggle is off, _get_effective_team_filter
+Bead `apexv2-zer`: when the global toggle is off, _get_effective_team_filter
 must return no-filter regardless of group-level or global team selections.
 That single chokepoint controls both the per-event filter (_filter_by_teams)
 and the post-filter channel cleanup (_cleanup_team_filtered_channels), so
@@ -11,15 +11,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from teamarr.database.settings import TeamFilterSettings
+from apex.database.settings import TeamFilterSettings
 from tests.fakes import FakeGroup
 
 
 @pytest.fixture
 def processor():
-    from teamarr.consumers.event_group_processor import EventGroupProcessor
+    from apex.consumers.event_group_processor import EventGroupProcessor
 
-    with patch("teamarr.consumers.event_group_processor.processor.create_default_service"):
+    with patch("apex.consumers.event_group_processor.processor.create_default_service"):
         return EventGroupProcessor(db_factory=MagicMock())
 
 
@@ -30,7 +30,7 @@ def mock_conn():
 
 def _patch_settings(settings: TeamFilterSettings):
     return patch(
-        "teamarr.database.settings.get_team_filter_settings",
+        "apex.database.settings.get_team_filter_settings",
         return_value=settings,
     )
 

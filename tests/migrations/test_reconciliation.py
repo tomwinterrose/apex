@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from teamarr.database.reconciliation import reconcile_schema
+from apex.database.reconciliation import reconcile_schema
 
 # Minimal schema.sql for testing — defines expected column state
 MINI_SCHEMA = """
@@ -245,7 +245,7 @@ class TestV65SchemaVersionCorrection:
 
     def test_corrects_version_from_backup(self):
         """When v65 backup exists, schema_version is corrected from backup."""
-        from teamarr.database.migrations import _run_migrations
+        from apex.database.migrations import _run_migrations
 
         conn = sqlite3.connect(":memory:")
         conn.row_factory = sqlite3.Row

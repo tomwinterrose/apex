@@ -7,7 +7,7 @@ docs_version: "2.3.1"
 
 # Technical Reference
 
-Developer documentation covering Teamarr's architecture, data providers, database, and deployment configuration.
+Developer documentation covering Apex's architecture, data providers, database, and deployment configuration.
 
 ## Sections
 

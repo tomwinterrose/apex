@@ -1,4 +1,4 @@
-"""Regression tests for managed_channels update column safety (bead teamarrv2-91l).
+"""Regression tests for managed_channels update column safety (bead apexv2-91l).
 
 The stream-drift path in _sync_channel_settings used to write
 db_updates["dispatcharr_stream_id"] and pass it to update_managed_channel(),
@@ -12,7 +12,7 @@ import sqlite3
 
 import pytest
 
-from teamarr.database.channels.crud import update_managed_channel
+from apex.database.channels.crud import update_managed_channel
 
 
 def _columns(db_conn, table: str) -> set[str]:

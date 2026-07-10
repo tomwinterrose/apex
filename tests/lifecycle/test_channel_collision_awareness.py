@@ -1,6 +1,6 @@
 """Tests for channel number collision awareness (epic wq8, GitHub #146).
 
-Teamarr must skip channel numbers already occupied by non-Teamarr channels
+Apex must skip channel numbers already occupied by non-Apex channels
 in Dispatcharr to prevent EPG data bleeding between channels.
 
 Updated for v59: global channel mode (auto/manual) replaces per-group settings.
@@ -89,16 +89,16 @@ class TestAutoModeWithExternals:
 
     def test_auto_skips_external_numbers(self, conn):
         """AUTO mode skips externally occupied channel numbers."""
-        from teamarr.database.channel_numbers import get_next_channel_number
+        from apex.database.channel_numbers import get_next_channel_number
 
         # External channels at 101, 102, 103
         external = {101, 102, 103}
         result = get_next_channel_number(conn, external_occupied=external)
         assert result == 104
 
-    def test_auto_skips_both_teamarr_and_external(self, conn):
-        """AUTO mode skips both Teamarr managed and external numbers."""
-        from teamarr.database.channel_numbers import get_next_channel_number
+    def test_auto_skips_both_apex_and_external(self, conn):
+        """AUTO mode skips both Apex managed and external numbers."""
+        from apex.database.channel_numbers import get_next_channel_number
 
         conn.execute("INSERT INTO event_epg_groups (id, name, enabled) VALUES (1, 'NHL', 1)")
         conn.execute(
@@ -110,26 +110,26 @@ class TestAutoModeWithExternals:
         # External at 101, 102, 103
         external = {101, 102, 103}
         result = get_next_channel_number(conn, external_occupied=external)
-        # Skips 101-103 (external) and 104 (Teamarr) → 105
+        # Skips 101-103 (external) and 104 (Apex) → 105
         assert result == 105
 
     def test_no_externals_works_as_before(self, conn):
         """Without external_occupied, starts from range_start."""
-        from teamarr.database.channel_numbers import get_next_channel_number
+        from apex.database.channel_numbers import get_next_channel_number
 
         result = get_next_channel_number(conn, external_occupied=None)
         assert result == 101
 
     def test_empty_externals_works_as_before(self, conn):
         """Empty external set is same as None."""
-        from teamarr.database.channel_numbers import get_next_channel_number
+        from apex.database.channel_numbers import get_next_channel_number
 
         result = get_next_channel_number(conn, external_occupied=set())
         assert result == 101
 
     def test_large_gap_skips_to_end(self, conn):
         """When externals fill range, assignment lands past them."""
-        from teamarr.database.channel_numbers import get_next_channel_number
+        from apex.database.channel_numbers import get_next_channel_number
 
         # External channels cover 101-15000
         external = set(range(101, 15001))
@@ -138,7 +138,7 @@ class TestAutoModeWithExternals:
 
     def test_scattered_externals_finds_first_gap(self, conn):
         """Scattered externals: assignment finds first available number."""
-        from teamarr.database.channel_numbers import get_next_channel_number
+        from apex.database.channel_numbers import get_next_channel_number
 
         # External at 101, 103, 105 — gaps at 102, 104, 106
         external = {101, 103, 105}
@@ -151,7 +151,7 @@ class TestManualModeWithExternals:
 
     def test_manual_uses_league_start(self, conn):
         """MANUAL mode uses per-league starting channel number."""
-        from teamarr.database.channel_numbers import get_next_channel_number
+        from apex.database.channel_numbers import get_next_channel_number
 
         conn.execute(
             "UPDATE settings SET global_channel_mode = 'manual', "
@@ -164,7 +164,7 @@ class TestManualModeWithExternals:
 
     def test_manual_skips_externals(self, conn):
         """MANUAL mode skips external numbers within league range."""
-        from teamarr.database.channel_numbers import get_next_channel_number
+        from apex.database.channel_numbers import get_next_channel_number
 
         conn.execute(
             "UPDATE settings SET global_channel_mode = 'manual', "
@@ -178,7 +178,7 @@ class TestManualModeWithExternals:
 
     def test_manual_fallback_to_range_start(self, conn):
         """Leagues without configured starts use global range."""
-        from teamarr.database.channel_numbers import get_next_channel_number
+        from apex.database.channel_numbers import get_next_channel_number
 
         conn.execute(
             "UPDATE settings SET global_channel_mode = 'manual', "
@@ -196,7 +196,7 @@ class TestGlobalReassignWithExternals:
 
     def test_auto_reassign_skips_externals(self, conn):
         """reassign_all_channels skips external channel numbers."""
-        from teamarr.database.channel_numbers import reassign_all_channels
+        from apex.database.channel_numbers import reassign_all_channels
 
         conn.execute("INSERT INTO event_epg_groups (id, name, enabled) VALUES (1, 'NHL', 1)")
         conn.execute(
@@ -222,7 +222,7 @@ class TestGlobalReassignWithExternals:
 
     def test_auto_reassign_no_externals(self, conn):
         """Reassignment without externals keeps channels at same position."""
-        from teamarr.database.channel_numbers import reassign_all_channels
+        from apex.database.channel_numbers import reassign_all_channels
 
         conn.execute("INSERT INTO event_epg_groups (id, name, enabled) VALUES (1, 'NHL', 1)")
         conn.execute(
@@ -242,7 +242,7 @@ class TestComputeExternalOccupied:
 
     def test_empty_dispatcharr(self):
         """No Dispatcharr channels → empty external set."""
-        from teamarr.consumers.lifecycle import compute_external_occupied
+        from apex.consumers.lifecycle import compute_external_occupied
 
         db = sqlite3.connect(":memory:")
         db.row_factory = sqlite3.Row
@@ -259,12 +259,12 @@ class TestComputeExternalOccupied:
         assert result == set()
         db.close()
 
-    def test_all_teamarr_managed(self):
-        """All Dispatcharr channels are Teamarr-managed → empty external set."""
+    def test_all_apex_managed(self):
+        """All Dispatcharr channels are Apex-managed → empty external set."""
         from unittest.mock import MagicMock
 
-        from teamarr.consumers.lifecycle import compute_external_occupied
-        from teamarr.dispatcharr.types import DispatcharrChannel
+        from apex.consumers.lifecycle import compute_external_occupied
+        from apex.dispatcharr.types import DispatcharrChannel
 
         db = sqlite3.connect(":memory:")
         db.row_factory = sqlite3.Row
@@ -290,11 +290,11 @@ class TestComputeExternalOccupied:
         db.close()
 
     def test_mixed_channels(self):
-        """Mix of Teamarr and external channels → only externals returned."""
+        """Mix of Apex and external channels → only externals returned."""
         from unittest.mock import MagicMock
 
-        from teamarr.consumers.lifecycle import compute_external_occupied
-        from teamarr.dispatcharr.types import DispatcharrChannel
+        from apex.consumers.lifecycle import compute_external_occupied
+        from apex.dispatcharr.types import DispatcharrChannel
 
         db = sqlite3.connect(":memory:")
         db.row_factory = sqlite3.Row
@@ -319,12 +319,12 @@ class TestComputeExternalOccupied:
         assert result == {100, 200}
         db.close()
 
-    def test_deleted_teamarr_channels_excluded(self):
-        """Deleted Teamarr channels don't count — their numbers are external."""
+    def test_deleted_apex_channels_excluded(self):
+        """Deleted Apex channels don't count — their numbers are external."""
         from unittest.mock import MagicMock
 
-        from teamarr.consumers.lifecycle import compute_external_occupied
-        from teamarr.dispatcharr.types import DispatcharrChannel
+        from apex.consumers.lifecycle import compute_external_occupied
+        from apex.dispatcharr.types import DispatcharrChannel
 
         db = sqlite3.connect(":memory:")
         db.row_factory = sqlite3.Row

@@ -1,5 +1,5 @@
 """Behavior tests for run_full_generation's helper stages
-(teamarr/consumers/generation.py — iua3.5 coverage gap, was zero tests).
+(apex/consumers/generation.py — iua3.5 coverage gap, was zero tests).
 
 Each helper is exercised against a real temp database (conftest db fixtures):
 - _refresh_m3u_accounts short-circuits without touching Dispatcharr when no
@@ -13,12 +13,12 @@ Each helper is exercised against a real temp database (conftest db fixtures):
 
 import json
 
-from teamarr.consumers.generation import (
+from apex.consumers.generation import (
     _apply_stream_ordering,
     _refresh_m3u_accounts,
     _validate_channel_ranges,
 )
-from teamarr.services.stream_ordering import NO_MATCH_PRIORITY
+from apex.services.stream_ordering import NO_MATCH_PRIORITY
 
 
 def _noop_progress(*args):

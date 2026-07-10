@@ -2,7 +2,7 @@
 
 import pytest
 
-from teamarr.templates.variables.identity import construct_league_abbrev
+from apex.templates.variables.identity import construct_league_abbrev
 
 
 @pytest.mark.parametrize(

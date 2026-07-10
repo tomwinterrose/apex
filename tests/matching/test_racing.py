@@ -7,17 +7,22 @@ regression-prone path (cf. #157): a team-sport stream that leaks into a
 racing-dominant group must NOT be hijacked as a race.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
-from teamarr.consumers.matching.classifier import StreamCategory, classify_stream
-from teamarr.consumers.matching.racing_matcher import RacingMatchContext, RacingMatcher
-from teamarr.consumers.racing_segments import (
+from apex.consumers.matching.classifier import StreamCategory, classify_stream
+from apex.consumers.matching.racing_matcher import RacingMatchContext, RacingMatcher
+from apex.consumers.racing_segments import (
+    _is_practice_session,
+    _isolate_stream_session_label,
     _parse_duration_from_name,
+    _session_category_from_stream_name,
     _session_duration_hours,
+    _session_in_category,
+    expand_racing_segments,
 )
-from teamarr.services.detection_keywords import DetectionKeywordService
+from apex.services.detection_keywords import DetectionKeywordService
 
 
 def setup_function():
@@ -90,9 +95,9 @@ def test_racing_league_hints_cover_all_schema_racing_leagues():
     import re
     from pathlib import Path
 
-    from teamarr.consumers.matching.classifier import _RACING_LEAGUE_HINTS
+    from apex.consumers.matching.classifier import _RACING_LEAGUE_HINTS
 
-    schema = Path("teamarr/database/schema.sql").read_text(encoding="utf-8")
+    schema = Path("apex/database/schema.sql").read_text(encoding="utf-8")
     schema_racing_codes = {
         m.group(1)
         for m in re.finditer(r"^\s*\('([a-z0-9-]+)',[^)\n]*'racing'", schema, re.MULTILINE)
@@ -177,8 +182,98 @@ def test_single_event_country_passes_sanity_check():
     assert out.is_matched and out.event.id == "a"
 
 
+def test_single_event_generic_venue_word_alone_does_not_match():
+    # Live false positive: an unrelated motorcycle "FIM Speedway GP" stream
+    # scored 53 (>= SINGLE_EVENT_SANITY_THRESHOLD) against NASCAR's
+    # "Atlanta Motor Speedway" purely on the shared generic word "Speedway"
+    # — zero real connection to NASCAR or this event. A bare score clearing
+    # the sanity threshold must not be enough without actual text evidence
+    # the stream names the right racing series.
+    a = _event("a", "Focused Health 250", circuit="Atlanta Motor Speedway")
+    out = _matcher()._match_to_event(
+        _ctx("HBO UK 047 | Malilla - FIM Speedway GP | Round 6 | Malilla"),
+        [a], "nascar-xfinity",
+    )
+    assert not out.is_matched
+
+
+def test_single_event_matches_with_text_evidence_even_at_sanity_threshold():
+    # Positive counterpart: a real NASCAR stream must still match via
+    # Strategy 1 when it clears the sanity threshold AND names the series.
+    a = _event("a", "Focused Health 250", circuit="Atlanta Motor Speedway")
+    out = _matcher()._match_to_event(
+        _ctx("NASCAR ORAP Series: Focused Health 250"), [a], "nascar-xfinity"
+    )
+    assert out.is_matched and out.event.id == "a"
+
+
 # ---------------------------------------------------------------------------
-# Racing session duration resolution (teamarr/consumers/racing_segments.py)
+# RacingMatcher anchor-time gating (EPG path) — follow-up to apexv2-w42k
+#
+# The EPG text-evidence gate (has_racing_text_evidence in classifier.py) only
+# proves a programme NAMES a racing series — it says nothing about whether the
+# programme is actually airing that series right now. A filler/stub EPG
+# programme (e.g. "Coming up: WEC Racing starting Friday at 9:00 AM",
+# duplicated verbatim across unrelated channels with no real listings behind
+# them) passes that gate yet has no real broadcast tied to it. _covers_instant
+# closes that gap by requiring a session to actually be airing (within
+# tolerance) at the programme's own broadcast instant, not just somewhere in
+# the race weekend's calendar span.
+# ---------------------------------------------------------------------------
+
+
+def _racing_session(code, start_time):
+    return SimpleNamespace(code=code, start_time=start_time)
+
+
+def _wec_event_with_sessions(sessions):
+    return SimpleNamespace(
+        id="tsdb_wec_2026_4",
+        name="6 Hours of São Paulo",
+        short_name="6 Hours of São Paulo",
+        circuit_name="Autódromo José Carlos Pace",
+        venue=SimpleNamespace(country="Brazil"),
+        league="wec",
+        sessions=sessions,
+        start_time=sessions[0].start_time,
+    )
+
+
+def test_covers_instant_true_near_a_real_session():
+    race_start = datetime(2026, 7, 12, 14, 0, tzinfo=UTC)
+    event = _wec_event_with_sessions([_racing_session("race", race_start)])
+    matcher = _matcher()
+    assert matcher._covers_instant(event, race_start, None)
+    assert matcher._covers_instant(event, race_start - timedelta(minutes=30), None)
+
+
+def test_covers_instant_false_for_filler_programme_hours_away():
+    # Reproduces a live false positive: a filler "Coming up: WEC Racing..."
+    # programme airing 5+ hours from any real session must not bind to the
+    # event just because it shares the calendar date.
+    race_start = datetime(2026, 7, 12, 14, 0, tzinfo=UTC)
+    event = _wec_event_with_sessions([_racing_session("race", race_start)])
+    filler_programme_time = race_start - timedelta(hours=5, minutes=26)
+    matcher = _matcher()
+    assert not matcher._covers_instant(event, filler_programme_time, None)
+
+
+def test_covers_instant_checks_every_session_in_the_weekend():
+    # A multi-session weekend: an instant near ANY session (not just the
+    # first) counts as covered.
+    fp1 = datetime(2026, 7, 10, 9, 0, tzinfo=UTC)
+    race = datetime(2026, 7, 12, 14, 0, tzinfo=UTC)
+    event = _wec_event_with_sessions(
+        [_racing_session("fp1", fp1), _racing_session("race", race)]
+    )
+    matcher = _matcher()
+    assert matcher._covers_instant(event, fp1, None)
+    assert matcher._covers_instant(event, race, None)
+    assert not matcher._covers_instant(event, fp1 + timedelta(hours=6), None)
+
+
+# ---------------------------------------------------------------------------
+# Racing session duration resolution (apex/consumers/racing_segments.py)
 #
 # `_parse_duration_from_name` and `_session_duration_hours` for endurance races
 # (WEC/IMSA) whose race length varies far more than the global "racing" sport
@@ -222,3 +317,211 @@ class TestSessionDurationHours:
 
     def test_sport_default_when_no_league(self):
         assert _session_duration_hours("race", {"racing": 3.0}) == 3.0
+
+
+# ---------------------------------------------------------------------------
+# expand_racing_segments: scoping to a stream's own named session
+#
+# A dedicated single-session feed (e.g. "Free Practice 3") must not also be
+# offered as the source for the Qualifying/Race channels. A stream whose name
+# carries no session hint (a linear channel's own branding) must keep the
+# full fan-out — narrowing must never happen without positive evidence, to
+# avoid false negatives (a legitimate whole-weekend channel disappearing
+# from sessions it should still cover).
+# ---------------------------------------------------------------------------
+
+
+def _wec_sessions():
+    base = datetime(2026, 7, 11, 9, tzinfo=UTC)
+    return [
+        SimpleNamespace(code="fp1", name="Free Practice 1", start_time=base),
+        SimpleNamespace(code="fp2", name="Free Practice 2", start_time=base + timedelta(hours=4)),
+        SimpleNamespace(code="fp3", name="Free Practice 3", start_time=base + timedelta(hours=8)),
+        SimpleNamespace(
+            code="qualifying_lmgt3", name="Qualifying - LMGT3",
+            start_time=base + timedelta(hours=12),
+        ),
+        SimpleNamespace(
+            code="hyperpole_lmgt3", name="Hyperpole - LMGT3",
+            start_time=base + timedelta(hours=12, minutes=30),
+        ),
+        SimpleNamespace(
+            code="qualifying_hypercar", name="Qualifying - Hypercar",
+            start_time=base + timedelta(hours=13),
+        ),
+        SimpleNamespace(
+            code="hyperpole_hypercar", name="Hyperpole - Hypercar",
+            start_time=base + timedelta(hours=13, minutes=30),
+        ),
+        SimpleNamespace(code="race", name="Race", start_time=base + timedelta(days=1)),
+    ]
+
+
+def _wec_event(sessions=None):
+    sessions = sessions if sessions is not None else _wec_sessions()
+    return SimpleNamespace(
+        sport="racing",
+        league="wec",
+        name="6 Hours of São Paulo",
+        sessions=sessions,
+    )
+
+
+def test_isolate_stream_session_label():
+    label = _isolate_stream_session_label(
+        "AU (STAN 36) | Free Practice 3: 6 Hours of Sao Paulo WEC 2026 (2026-07-11 23:00:44)"
+    )
+    assert label == "Free Practice 3"
+
+
+def test_isolate_stream_session_label_no_delimiters():
+    assert _isolate_stream_session_label("HBO UK 065") == "HBO UK 065"
+
+
+class TestSessionCategoryFromStreamName:
+    def test_numbered_free_practice(self):
+        assert _session_category_from_stream_name(
+            "AU (STAN 36) | Free Practice 3: 6 Hours of Sao Paulo WEC 2026 (2026-07-11 23:00:44)"
+        ) == "fp3"
+
+    def test_bare_qualifying(self):
+        assert _session_category_from_stream_name(
+            "AU (STAN 39) | Qualifying: 6 Hours of Sao Paulo WEC 2026 (2026-07-12 03:20:29)"
+        ) == "qualifying"
+
+    def test_bare_race(self):
+        assert _session_category_from_stream_name("AU (STAN) | Race: 6 Hours of Sao Paulo") == "race"
+
+    def test_generic_channel_name_has_no_hint(self):
+        # Linear/whole-weekend channel names must not trip narrowing.
+        name = "HBO UK 065|  6 HOURS OF SAO PAULO - FIA WEC | Round 5 | 6 Hours of Sao Paulo (2026-07-11 13:00:00)"  # noqa: E501
+        assert _session_category_from_stream_name(name) is None
+
+    def test_race_as_substring_of_unrelated_branding_has_no_hint(self):
+        # "race" must only count as a label when it (near enough) stands
+        # alone — not as a substring of generic branding text.
+        assert _session_category_from_stream_name("Sky | Race Week Live: WEC coverage") is None
+
+    def test_plain_channel_name_has_no_hint(self):
+        assert _session_category_from_stream_name("ESPN 2 (US)") is None
+
+    def test_trailing_qualifying_keyword(self):
+        # NASCAR/TSN+ convention: session type as a trailing word in the
+        # label, not the whole label (unlike tsdb/STAN's bare "Qualifying").
+        assert _session_category_from_stream_name(
+            "CA (TSN+ 021) | NASCAR Cup Series Qualifying: Quaker State 400 (2026-07-11 16:30:00)"
+        ) == "qualifying"
+        assert _session_category_from_stream_name(
+            "CA (TSN+ 015) | 2026 NASCAR ORAP Series Qualifying: Focused Health 250 (2026-07-11 11:00:00)"
+        ) == "qualifying"
+
+    def test_no_trailing_keyword_has_no_hint(self):
+        # A label ending in descriptive text (not a session word) must not
+        # trip the trailing fallback.
+        assert _session_category_from_stream_name(
+            "2026 NASCAR CRAFTSMAN Truck Series: LiUNA 150 (2026-07-11 13:00:00)"
+        ) is None
+        assert _session_category_from_stream_name(
+            "CA (TSN+ 036) | NASCAR Cup Series On_Board Camera: Quaker State 400 (2026-07-12 19:00:00)"
+        ) is None
+
+
+class TestSessionInCategory:
+    def test_numbered_fp_matches_exactly(self):
+        assert _session_in_category("fp3", "fp3")
+        assert not _session_in_category("fp1", "fp3")
+
+    def test_qualifying_category_covers_class_suffixed_sessions(self):
+        assert _session_in_category("qualifying_lmgt3", "qualifying")
+        assert _session_in_category("qualifying_hypercar", "qualifying")
+        assert not _session_in_category("fp1", "qualifying")
+
+    def test_qualifying_category_also_covers_hyperpole(self):
+        # WEC's Hyperpole is itself a qualifying shootout, and providers
+        # rarely label it distinctly — a bare "Qualifying" stream is a real
+        # candidate for a Hyperpole session too.
+        assert _session_in_category("hyperpole_lmgt3", "qualifying")
+        assert _session_in_category("hyperpole_hypercar", "qualifying")
+        assert _session_in_category("hyperpole", "qualifying")
+        # But a stream explicitly labeled "Hyperpole" stays scoped to
+        # hyperpole sessions only — narrowing is not symmetric.
+        assert not _session_in_category("qualifying_lmgt3", "hyperpole")
+
+
+def test_expand_racing_segments_scopes_dedicated_fp3_stream():
+    matched = [{"stream": {"id": 1, "name": "AU (STAN) | Free Practice 3: 6 Hours of Sao Paulo"},
+                "event": _wec_event()}]
+    out = expand_racing_segments(matched)
+    assert [m["segment"] for m in out] == ["fp3"]
+
+
+def test_expand_racing_segments_scopes_bare_qualifying_to_both_classes_and_hyperpole():
+    matched = [{"stream": {"id": 1, "name": "AU (STAN) | Qualifying: 6 Hours of Sao Paulo"},
+                "event": _wec_event()}]
+    out = expand_racing_segments(matched)
+    assert {m["segment"] for m in out} == {
+        "qualifying_lmgt3", "qualifying_hypercar", "hyperpole_lmgt3", "hyperpole_hypercar",
+    }
+
+
+def test_expand_racing_segments_keeps_full_fanout_for_generic_channel_name_excluding_practice():
+    # A generic/linear channel name still fans out across everything EXCEPT
+    # practice — providers rarely carry a dedicated practice feed, so a
+    # whole-weekend stream landing on a Practice channel is more likely to
+    # be dead air than a real source; better no channel than that.
+    matched = [{
+        "stream": {"id": 1, "name": "HBO UK 065|  6 HOURS OF SAO PAULO - FIA WEC | Round 5"},
+        "event": _wec_event(),
+    }]
+    out = expand_racing_segments(matched)
+    assert {m["segment"] for m in out} == {
+        "qualifying_lmgt3", "hyperpole_lmgt3", "qualifying_hypercar", "hyperpole_hypercar",
+        "race",
+    }
+
+
+def test_expand_racing_segments_still_scopes_dedicated_practice_stream():
+    # The exception: a stream whose name specifically names a practice
+    # session still gets that session (already covered by
+    # test_expand_racing_segments_scopes_dedicated_fp3_stream, asserted
+    # again here alongside the generic-name exclusion for contrast).
+    matched = [{"stream": {"id": 1, "name": "AU (STAN) | Free Practice 2: 6 Hours of Sao Paulo"},
+                "event": _wec_event()}]
+    out = expand_racing_segments(matched)
+    assert [m["segment"] for m in out] == ["fp2"]
+
+
+def test_expand_racing_segments_falls_back_when_no_session_of_the_category_exists():
+    # Defensive: a hint that doesn't match anything in THIS event's sessions
+    # must not silently produce zero segments for a real matched stream.
+    sessions = [s for s in _wec_sessions() if s.code != "fp3"]
+    matched = [{"stream": {"id": 1, "name": "AU (STAN) | Free Practice 3: 6 Hours of Sao Paulo"},
+                "event": _wec_event(sessions)}]
+    out = expand_racing_segments(matched)
+    assert len(out) == len(sessions)
+
+
+class TestIsPracticeSession:
+    def test_numbered_fp_codes(self):
+        assert _is_practice_session("fp1")
+        assert _is_practice_session("fp2")
+        assert _is_practice_session("fp3")
+
+    def test_bare_practice_code(self):
+        assert _is_practice_session("practice")
+
+    def test_non_practice_codes(self):
+        assert not _is_practice_session("qualifying")
+        assert not _is_practice_session("race")
+        assert not _is_practice_session("hyperpole_lmgt3")
+        assert not _is_practice_session("sprint")
+
+
+def test_expand_racing_segments_produces_no_channel_when_only_practice_exists():
+    # A single-session (practice-only) event matched by a generic stream:
+    # rather than land the stream on a Practice channel with nothing airing
+    # yet, no segment — and so no channel — should be produced at all.
+    sessions = [SimpleNamespace(code="practice", name="Practice", start_time=datetime(2026, 7, 11, 9, tzinfo=UTC))]
+    matched = [{"stream": {"id": 1, "name": "TSN+ 016"}, "event": _wec_event(sessions)}]
+    out = expand_racing_segments(matched)
+    assert out == []

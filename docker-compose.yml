@@ -1,10 +1,12 @@
+name: apex
+
 services:
-  vroomarr:
-    image: ghcr.io/tomwinterrose/vroomarr:latest
+  apex:
+    image: ghcr.io/tomwinterrose/apex:latest
     ports:
       - "9198:9198"
     volumes:
-      - vroomarr-data:/app/data
+      - apex-data:/app/data
     environment:
       - DISPATCHARR_URL=${DISPATCHARR_URL:-}
       - TSDB_API_KEY=${TSDB_API_KEY:-1}
@@ -13,4 +15,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  vroomarr-data:
+  apex-data:

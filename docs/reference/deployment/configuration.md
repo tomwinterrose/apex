@@ -8,7 +8,7 @@ docs_version: "2.3.1"
 
 # Configuration
 
-Teamarr is configured via environment variables in your `docker-compose.yml` file. Most settings have sensible defaults and don't need to be changed.
+Apex is configured via environment variables in your `docker-compose.yml` file. Most settings have sensible defaults and don't need to be changed.
 
 ## General Settings
 
@@ -22,7 +22,7 @@ Teamarr is configured via environment variables in your `docker-compose.yml` fil
 
 ## ESPN API Settings
 
-These settings control how Teamarr communicates with ESPN's API. Most users don't need to change these defaults.
+These settings control how Apex communicates with ESPN's API. Most users don't need to change these defaults.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -65,12 +65,12 @@ Controls for the MLB Stats provider (MiLB leagues).
 
 ## Logging
 
-Teamarr writes to two rotating log files:
+Apex writes to two rotating log files:
 
 | File | Contents | Rotation |
 |------|----------|----------|
-| `teamarr.log` | All log messages (DEBUG and above) | 10 MB x 5 files |
-| `teamarr_errors.log` | Errors only | 10 MB x 3 files |
+| `apex.log` | All log messages (DEBUG and above) | 10 MB x 5 files |
+| `apex_errors.log` | Errors only | 10 MB x 3 files |
 
 The console log level is controlled by the `LOG_LEVEL` environment variable (default: `INFO`). File logs always capture `DEBUG` regardless of this setting.
 
@@ -86,22 +86,22 @@ The log directory is determined in this order:
 
 ```bash
 # Docker container stdout
-docker logs --tail 100 teamarr
+docker logs --tail 100 apex
 
 # Log file (inside container or data volume)
-docker exec teamarr cat /app/data/logs/teamarr.log | tail -100
+docker exec apex cat /app/data/logs/apex.log | tail -100
 
 # Or from data volume on host
-tail -n 100 ./data/logs/teamarr.log
+tail -n 100 ./data/logs/apex.log
 ```
 
 ## Data Paths
 
 | Path | Contents |
 |------|----------|
-| `/app/data/teamarr.db` | Database — all configuration, teams, templates, history |
+| `/app/data/apex.db` | Database — all configuration, teams, templates, history |
 | `/app/data/logs/` | Log files (auto-rotating) |
 | `/app/data/epg/` | Generated XMLTV output |
 
 {: .warning }
-**Never delete `teamarr.db`** — it contains all your configuration. Schema upgrades are handled automatically via migrations on startup.
+**Never delete `apex.db`** — it contains all your configuration. Schema upgrades are handled automatically via migrations on startup.

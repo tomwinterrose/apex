@@ -66,13 +66,13 @@ baseball/mlb
 
 ## Soccer League Discovery
 
-ESPN's API exposes ~250 soccer leagues through its `/v2/sports/soccer/leagues` discovery endpoint (hard-capped at 250 by ESPN; we've seen ~247–248 after filtering). During cache refresh, Teamarr discovers available leagues and makes them selectable in the league picker under the Soccer sport. These discovered leagues support event matching in event groups but don't have pre-configured team import. A small number of real soccer leagues (e.g. Swiss Super League, Israeli Premier League) are omitted from ESPN's discovery index despite being fully served by the data endpoints — these are registered as primary leagues in `schema.sql` as a workaround.
+ESPN's API exposes ~250 soccer leagues through its `/v2/sports/soccer/leagues` discovery endpoint (hard-capped at 250 by ESPN; we've seen ~247–248 after filtering). During cache refresh, Apex discovers available leagues and makes them selectable in the league picker under the Soccer sport. These discovered leagues support event matching in event groups but don't have pre-configured team import. A small number of real soccer leagues (e.g. Swiss Super League, Israeli Premier League) are omitted from ESPN's discovery index despite being fully served by the data endpoints — these are registered as primary leagues in `schema.sql` as a workaround.
 
 Soccer leagues use ESPN's dot notation: `{country}.{tier}` (e.g., `eng.1` for Premier League, `ger.2` for 2. Bundesliga).
 
 ## Special Behaviors
 
-- **Status mapping**: ESPN event statuses are normalized to Teamarr's internal `scheduled`, `in_progress`, `final`, `postponed`, `cancelled`
+- **Status mapping**: ESPN event statuses are normalized to Apex's internal `scheduled`, `in_progress`, `final`, `postponed`, `cancelled`
 - **Season type normalization**: ESPN's `season.slug` field is parsed to canonical `preseason` / `regular` / `postseason` / `offseason` values. The slug is the primary source (handles soccer knockouts: `semifinals`, `round-of-16`, `final`, etc.), falling back to the numeric `season.type` (1–4) for leagues where slug is absent. The summary endpoint (`/summary?event=`) nests `season` under `header.season`, so `get_event` passes it through explicitly — otherwise a refresh would wipe the season_type set during the initial scoreboard fetch.
 - **Team ID corrections**: Hardcoded mapping for known ESPN data mismatches (e.g., some women's hockey teams)
 - **Tournament sports**: Golf, tennis, and racing events have no home/away teams — parsed via `TournamentParserMixin`
@@ -82,8 +82,8 @@ Soccer leagues use ESPN's dot notation: `{country}.{tier}` (e.g., `eng.1` for Pr
 
 | File | Purpose |
 |------|---------|
-| `teamarr/providers/espn/provider.py` | ESPNProvider class |
-| `teamarr/providers/espn/client.py` | HTTP client with retry logic |
-| `teamarr/providers/espn/constants.py` | Status mapping |
-| `teamarr/providers/espn/tournament.py` | TournamentParserMixin (golf, tennis, racing) |
-| `teamarr/providers/espn/ufc.py` | UFCParserMixin |
+| `apex/providers/espn/provider.py` | ESPNProvider class |
+| `apex/providers/espn/client.py` | HTTP client with retry logic |
+| `apex/providers/espn/constants.py` | Status mapping |
+| `apex/providers/espn/tournament.py` | TournamentParserMixin (golf, tennis, racing) |
+| `apex/providers/espn/ufc.py` | UFCParserMixin |

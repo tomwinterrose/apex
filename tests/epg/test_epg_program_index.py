@@ -1,8 +1,8 @@
 """Tests for EPGProgramIndex — scoped fetch + tvg_id index + overlap lookup.
 
-Covers teamarrv2-183.3:
+Covers apexv2-183.3:
 - fetch is scoped to the distinct candidate tvg_ids (one call per tvg_id)
-- _Vroomarr programs are excluded
+- _Apex programs are excluded
 - unsupported endpoint / empty tvg_id set short-circuit cleanly
 - overlap lookup returns only programs intersecting the event window
 - programs with unparseable times are never returned by lookup
@@ -11,8 +11,8 @@ Covers teamarrv2-183.3:
 from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
-from teamarr.consumers.matching.epg_index import EPGProgramIndex
-from teamarr.dispatcharr.types import DispatcharrProgram
+from apex.consumers.matching.epg_index import EPGProgramIndex
+from apex.dispatcharr.types import DispatcharrProgram
 
 
 def _prog(pid, tvg, start, end, title="MLB Baseball", source="ext", **kw):
@@ -64,15 +64,36 @@ def test_build_fetches_by_resolved_tvg_and_keys_by_stream_tvg():
     assert set(idx.tvg_ids()) == {"FoxSports1.us", "ESPN.us"}
 
 
-def test_build_excludes_teamarr_programs():
+def test_build_excludes_apex_programs():
     mgr = _epg_mgr()
     base = datetime(2026, 6, 1, 18, tzinfo=UTC)
     mgr.search_programs.return_value = [
         _prog(1, "espn", base, base + timedelta(hours=2), source="ext"),
-        _prog(2, "espn", base, base + timedelta(hours=2), source="_Vroomarr"),
+        _prog(2, "espn", base, base + timedelta(hours=2), source="_Apex"),
     ]
 
     idx = EPGProgramIndex.build(mgr, {"espn": "espn"}, base, base + timedelta(days=1))
+    assert idx.program_count() == 1
+    assert idx.lookup("espn", base, base + timedelta(hours=1))[0].id == 1
+
+
+def test_build_excludes_own_source_by_resolved_name():
+    # Live-bug regression: is_apex hardcodes epg_source == "_Apex",
+    # which never matches an install whose source is named "Apex" (the
+    # actual default, no underscore) or anything else a user renamed it to.
+    # own_source_name is resolved at runtime from the app's own configured
+    # dispatcharr_epg_id and must be honored independently of is_apex, so
+    # our own generated programs never get matched back against themselves.
+    mgr = _epg_mgr()
+    base = datetime(2026, 6, 1, 18, tzinfo=UTC)
+    mgr.search_programs.return_value = [
+        _prog(1, "espn", base, base + timedelta(hours=2), source="ext"),
+        _prog(2, "espn", base, base + timedelta(hours=2), source="Apex"),
+    ]
+
+    idx = EPGProgramIndex.build(
+        mgr, {"espn": "espn"}, base, base + timedelta(days=1), own_source_name="Apex",
+    )
     assert idx.program_count() == 1
     assert idx.lookup("espn", base, base + timedelta(hours=1))[0].id == 1
 

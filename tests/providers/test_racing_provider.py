@@ -1,14 +1,14 @@
 """Tests for ESPN racing event parsing (F1, NASCAR, ...).
 
 Verifies `_parse_racing_event` / `_parse_racing_session` in
-teamarr/providers/espn/tournament.py for:
+apex/providers/espn/tournament.py for:
 - A multi-session F1 race weekend (practice/qualifying/race), pre-race
   (grid only) and post-race (results + fastest lap).
 - A single-session NASCAR-style event (no `type` block on the lone
   competition), which should degenerate to one "race" session.
 """
 
-from teamarr.providers.espn.provider import ESPNProvider
+from apex.providers.espn.provider import ESPNProvider
 
 provider = ESPNProvider()
 

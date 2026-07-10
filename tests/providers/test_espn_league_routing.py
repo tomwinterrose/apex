@@ -1,4 +1,4 @@
-"""Regression tests for ESPN provider league routing (#218, teamarrv2-4vz).
+"""Regression tests for ESPN provider league routing (#218, apexv2-4vz).
 
 ESPN.supports_league() decides whether ESPN claims a league during the
 provider race in SportsDataService (ESPN is priority 0, so it wins ties).
@@ -11,7 +11,7 @@ Discovered soccer leagues (not in the leagues table) must still resolve via
 that heuristic.
 """
 
-from teamarr.providers.espn.provider import ESPNProvider
+from apex.providers.espn.provider import ESPNProvider
 
 
 class FakeMappingSource:

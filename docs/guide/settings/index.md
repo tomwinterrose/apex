@@ -8,7 +8,7 @@ docs_version: "2.3.0"
 
 # Settings
 
-Configure Teamarr's behavior through the Settings page. Settings are organized into tabs:
+Configure Apex's behavior through the Settings page. Settings are organized into tabs:
 
 - **[General](general)** - Timezone, time format, and display preferences
 - **[Teams](teams)** - Team-based stream settings

@@ -51,7 +51,7 @@ export function XmltvMetadataCard() {
             <Label htmlFor="xmltv-name">XMLTV Generator Name</Label>
             <Input
               id="xmltv-name"
-              value={display?.xmltv_generator_name ?? "Vroomarr"}
+              value={display?.xmltv_generator_name ?? "Apex"}
               onChange={(e) => display && setDisplay({ ...display, xmltv_generator_name: e.target.value })}
             />
           </div>
@@ -59,9 +59,9 @@ export function XmltvMetadataCard() {
             <Label htmlFor="xmltv-url">XMLTV Generator URL</Label>
             <Input
               id="xmltv-url"
-              value={display?.xmltv_generator_url ?? "https://github.com/tomwinterrose/vroomarr"}
+              value={display?.xmltv_generator_url ?? "https://github.com/tomwinterrose/apex"}
               onChange={(e) => display && setDisplay({ ...display, xmltv_generator_url: e.target.value })}
-              placeholder="https://github.com/tomwinterrose/vroomarr"
+              placeholder="https://github.com/tomwinterrose/apex"
             />
           </div>
         </div>

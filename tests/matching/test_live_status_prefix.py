@@ -6,10 +6,10 @@ Non-English EPG feeds prepend live-status words to the matchup
 real team names that merely start with the same letters stay intact.
 
 English "live" is intentionally NOT stripped — it collides with team names like
-"Live Oak FC". See LIVE_STATUS_PREFIXES in teamarr/utilities/constants.py.
+"Live Oak FC". See LIVE_STATUS_PREFIXES in apex/utilities/constants.py.
 """
 
-from teamarr.consumers.matching.normalizer import (
+from apex.consumers.matching.normalizer import (
     normalize_stream,
     strip_live_status_prefix,
 )

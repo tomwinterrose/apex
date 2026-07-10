@@ -14,7 +14,7 @@ Configure EPG output, scheduling, channel reset, and default game durations.
 
 ### Output Path
 
-Where to write the generated XMLTV file. Default: `./data/teamarr.xml`
+Where to write the generated XMLTV file. Default: `./data/apex.xml`
 
 ### Output Days Ahead
 
@@ -51,7 +51,7 @@ Manually trigger an EPG generation run.
 
 ## Scheduled Channel Reset
 
-For users experiencing stale channel logos in Jellyfin. Schedule a periodic purge of all Teamarr channels before your media server's guide refresh. Leave disabled if you're not having issues.
+For users experiencing stale channel logos in Jellyfin. Schedule a periodic purge of all Apex channels before your media server's guide refresh. Leave disabled if you're not having issues.
 
 ### Enable Scheduled Channel Reset
 

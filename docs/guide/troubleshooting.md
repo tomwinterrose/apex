@@ -15,7 +15,7 @@ Common issues and how to resolve them.
 
 Failed streams couldn't be matched to a real sporting event. Common causes:
 
-- **Stream name too vague** — Names like "Sports 1" or "NBA 3" don't contain team names. Teamarr needs identifiable team or event information.
+- **Stream name too vague** — Names like "Sports 1" or "NBA 3" don't contain team names. Apex needs identifiable team or event information.
 - **League not subscribed** — The stream's league isn't enabled in Event Groups > Global Defaults. Enable it and regenerate.
 - **Team name mismatch** — Your IPTV provider uses a non-standard name. Add a [team alias](detection-library#team-aliases) to map it to the official name.
 - **Date mismatch** — Streams with dates in DD/MM format may be parsed as MM/DD. Use [custom regex extractors](event-groups/creating-groups#custom-regex-extractors) with named groups (`(?P<day>...)/(?P<month>...)`) to fix this.
@@ -62,7 +62,7 @@ Some media servers (particularly Jellyfin) cache channel logos aggressively. Ena
 
 ### EPG source dropdown is empty
 
-You need to add Teamarr's XMLTV URL as an EPG source in Dispatcharr first. Copy the URL from the EPG page in Teamarr and add it in Dispatcharr's EPG sources.
+You need to add Apex's XMLTV URL as an EPG source in Dispatcharr first. Copy the URL from the EPG page in Apex and add it in Dispatcharr's EPG sources.
 
 ## Generation
 
@@ -79,10 +79,10 @@ Check the logs for details:
 
 ```bash
 # Docker
-docker logs --tail 200 teamarr
+docker logs --tail 200 apex
 
 # Log file (inside container or data volume)
-tail -n 200 data/logs/teamarr.log
+tail -n 200 data/logs/apex.log
 ```
 
 Common causes:
@@ -94,9 +94,9 @@ Common causes:
 
 ### Startup crash after upgrade
 
-If Teamarr fails to start after pulling a new image, check the logs for migration errors. Common fixes:
+If Apex fails to start after pulling a new image, check the logs for migration errors. Common fixes:
 
-- **Never delete `teamarr.db`** — it contains all your configuration. Migrations handle schema changes automatically.
+- **Never delete `apex.db`** — it contains all your configuration. Migrations handle schema changes automatically.
 - If upgrading from a very old version (pre-2.1.2), the migration path should work automatically. If it doesn't, file a bug report with the error message.
 
 ### Restoring a backup
@@ -105,22 +105,22 @@ Go to Settings > System > Backup & Restore. Upload a `.db` backup file. A backup
 
 ## Logs
 
-Teamarr writes to two log files in the `data/logs/` directory:
+Apex writes to two log files in the `data/logs/` directory:
 
 | File | Contents | Rotation |
 |------|----------|----------|
-| `teamarr.log` | All log messages (DEBUG and above) | 10 MB x 5 files |
-| `teamarr_errors.log` | Errors only | 10 MB x 3 files |
+| `apex.log` | All log messages (DEBUG and above) | 10 MB x 5 files |
+| `apex_errors.log` | Errors only | 10 MB x 3 files |
 
 The console log level is controlled by the `LOG_LEVEL` environment variable (default: `INFO`). File logs always capture `DEBUG` regardless of this setting.
 
 ```bash
 # View recent logs
-docker logs --tail 100 teamarr          # Console output
-docker exec teamarr cat data/logs/teamarr.log | tail -100  # Log file
+docker logs --tail 100 apex          # Console output
+docker exec apex cat data/logs/apex.log | tail -100  # Log file
 ```
 
 ## Getting Help
 
-- **GitHub Issues**: [github.com/Pharaoh-Labs/teamarr/issues](https://github.com/Pharaoh-Labs/teamarr/issues)
-- **Discord**: Join the Dispatcharr Discord server — there's a Teamarr channel
+- **GitHub Issues**: [github.com/tomwinterrose/apex/issues](https://github.com/tomwinterrose/apex/issues)
+- **Discord**: Join the Dispatcharr Discord server — there's a Apex channel

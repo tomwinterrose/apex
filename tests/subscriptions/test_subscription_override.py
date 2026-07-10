@@ -18,9 +18,9 @@ from tests.fakes import FakeGroup, FakeSubscription
 @pytest.fixture
 def processor():
     """Create a minimal EventGroupProcessor with mocked dependencies."""
-    from teamarr.consumers.event_group_processor import EventGroupProcessor
+    from apex.consumers.event_group_processor import EventGroupProcessor
 
-    with patch("teamarr.consumers.event_group_processor.processor.create_default_service"):
+    with patch("apex.consumers.event_group_processor.processor.create_default_service"):
         proc = EventGroupProcessor(db_factory=MagicMock())
     return proc
 
@@ -44,7 +44,7 @@ class TestGroupOverridePriority:
             subscription_leagues=["mlb", "mls"],
         )
         with patch(
-            "teamarr.database.subscription.get_subscription",
+            "apex.database.subscription.get_subscription",
             return_value=mock_subscription,
         ):
             result = processor._resolve_subscription_leagues(mock_conn, group)
@@ -54,7 +54,7 @@ class TestGroupOverridePriority:
     def test_null_override_falls_back_to_global(self, processor, mock_conn, mock_subscription):
         group = FakeGroup(id=2, subscription_leagues=None)
         with patch(
-            "teamarr.database.subscription.get_subscription",
+            "apex.database.subscription.get_subscription",
             return_value=mock_subscription,
         ):
             result = processor._resolve_subscription_leagues(mock_conn, group)
@@ -63,7 +63,7 @@ class TestGroupOverridePriority:
 
     def test_no_group_falls_back_to_global(self, processor, mock_conn, mock_subscription):
         with patch(
-            "teamarr.database.subscription.get_subscription",
+            "apex.database.subscription.get_subscription",
             return_value=mock_subscription,
         ):
             result = processor._resolve_subscription_leagues(mock_conn, None)
@@ -73,7 +73,7 @@ class TestGroupOverridePriority:
     def test_empty_override_returns_empty(self, processor, mock_conn, mock_subscription):
         group = FakeGroup(id=3, subscription_leagues=[])
         with patch(
-            "teamarr.database.subscription.get_subscription",
+            "apex.database.subscription.get_subscription",
             return_value=mock_subscription,
         ):
             result = processor._resolve_subscription_leagues(mock_conn, group)
@@ -93,11 +93,11 @@ class TestSoccerModeOverride:
         fake_soccer = ["eng.1", "esp.1"]
         with (
             patch(
-                "teamarr.database.subscription.get_subscription",
+                "apex.database.subscription.get_subscription",
                 return_value=FakeSubscription(),
             ),
             patch(
-                "teamarr.consumers.event_group_processor.processor.get_enabled_soccer_leagues",
+                "apex.consumers.event_group_processor.processor.get_enabled_soccer_leagues",
                 return_value=fake_soccer,
             ),
         ):
@@ -115,7 +115,7 @@ class TestSoccerModeOverride:
             subscription_soccer_mode="manual",
         )
         with patch(
-            "teamarr.database.subscription.get_subscription",
+            "apex.database.subscription.get_subscription",
             return_value=FakeSubscription(),
         ):
             result = processor._resolve_subscription_leagues(mock_conn, group)
@@ -134,7 +134,7 @@ class TestSoccerModeOverride:
             subscription_soccer_mode=None,  # No soccer mode
         )
         with patch(
-            "teamarr.database.subscription.get_subscription",
+            "apex.database.subscription.get_subscription",
             return_value=global_sub,
         ):
             result = processor._resolve_subscription_leagues(mock_conn, group)
@@ -151,7 +151,7 @@ class TestCaching:
         group_b = FakeGroup(id=2, subscription_leagues=None)
 
         with patch(
-            "teamarr.database.subscription.get_subscription",
+            "apex.database.subscription.get_subscription",
             return_value=mock_subscription,
         ) as mock_get:
             result_a = processor._get_subscription_leagues(mock_conn, group_a)
@@ -166,7 +166,7 @@ class TestCaching:
         group_b = FakeGroup(id=2, subscription_leagues=["nba"])
 
         with patch(
-            "teamarr.database.subscription.get_subscription",
+            "apex.database.subscription.get_subscription",
             return_value=mock_subscription,
         ):
             result_a = processor._get_subscription_leagues(mock_conn, group_a)
@@ -180,7 +180,7 @@ class TestCaching:
         group_global = FakeGroup(id=2, subscription_leagues=None)
 
         with patch(
-            "teamarr.database.subscription.get_subscription",
+            "apex.database.subscription.get_subscription",
             return_value=mock_subscription,
         ):
             result_override = processor._get_subscription_leagues(mock_conn, group_override)

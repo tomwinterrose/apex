@@ -10,13 +10,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from teamarr.core import Event, EventStatus, Team
-from teamarr.templates.context import (
+from apex.core import Event, EventStatus, Team
+from apex.templates.context import (
     GameContext,
     TeamChannelContext,
     TemplateContext,
 )
-from teamarr.templates.variables.home_away import (
+from apex.templates.variables.home_away import (
     extract_broadcast_feed,
     extract_broadcast_feed_team,
     extract_feed_home_away,

@@ -7,7 +7,7 @@ docs_version: "2.3.1"
 
 # Supported Sports & Leagues
 
-Teamarr supports **132 pre-configured leagues** across 14 sports, plus **~250 dynamically discovered soccer leagues** from ESPN. Pre-configured leagues have full support (team import + event matching). Discovered leagues support event matching only.
+Apex supports **132 pre-configured leagues** across 14 sports, plus **~250 dynamically discovered soccer leagues** from ESPN. Pre-configured leagues have full support (team import + event matching). Discovered leagues support event matching only.
 
 ## Support Levels
 
@@ -140,7 +140,7 @@ TSDB leagues are classified by tier. Most work on the free tier. Leagues marked 
 ## Soccer
 
 {: .tip }
-Teamarr automatically discovers **~250 soccer leagues** from ESPN's API during cache refresh. The leagues listed below are the pre-configured ones with full support (team import + event matching). All discovered leagues are available for event matching in event groups — select them from the league picker under the Soccer sport.
+Apex automatically discovers **~250 soccer leagues** from ESPN's API during cache refresh. The leagues listed below are the pre-configured ones with full support (team import + event matching). All discovered leagues are available for event matching in event groups — select them from the league picker under the Soccer sport.
 
 ### North America
 
@@ -362,6 +362,6 @@ AFL is served by the Squiggle provider — free, no API key required. Includes t
 
 ## Adding New Leagues
 
-New leagues are added to the `INSERT OR REPLACE INTO leagues` block in `teamarr/database/schema.sql`. Each league requires a provider, league ID, display name, sport, and optionally logos and TSDB tier. See the [Providers](providers/) section for details on each provider's ID format.
+New leagues are added to the `INSERT OR REPLACE INTO leagues` block in `apex/database/schema.sql`. Each league requires a provider, league ID, display name, sport, and optionally logos and TSDB tier. See the [Providers](providers/) section for details on each provider's ID format.
 
-If you need a league that isn't listed here, please open an issue on [GitHub](https://github.com/Pharaoh-Labs/teamarr/issues).
+If you need a league that isn't listed here, please open an issue on [GitHub](https://github.com/tomwinterrose/apex/issues).

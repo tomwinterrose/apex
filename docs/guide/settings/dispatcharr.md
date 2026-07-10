@@ -36,13 +36,13 @@ A status badge shows the current connection state:
 
 ## EPG Source
 
-Select which EPG source in Dispatcharr to associate with Teamarr-managed channels. This links your channels to the correct guide data.
+Select which EPG source in Dispatcharr to associate with Apex-managed channels. This links your channels to the correct guide data.
 
 If you haven't created an EPG source in Dispatcharr yet, you'll need to do that first. See [Dispatcharr Integration Guide](../dispatcharr-integration) for setup details.
 
 ## Default Channel Profiles
 
-Select which channel profiles to assign to Teamarr-managed channels by default. Individual [event groups can override](../event-groups/creating-groups#channel-profiles) this setting, and [per-league config](channels#per-league-channel-config) can override per league.
+Select which channel profiles to assign to Apex-managed channels by default. Individual [event groups can override](../event-groups/creating-groups#channel-profiles) this setting, and [per-league config](channels#per-league-channel-config) can override per league.
 
 - **All profiles selected** — Channels appear in all profiles
 - **None selected** — Channels don't appear in any profile
@@ -64,13 +64,13 @@ Profile assignment is enforced on every EPG generation run. Wildcard profiles ar
 
 ## Default Stream Profile
 
-Select which stream profile to assign to streams on Teamarr-managed channels. Stream profiles in Dispatcharr control transcoding and quality settings.
+Select which stream profile to assign to streams on Apex-managed channels. Stream profiles in Dispatcharr control transcoding and quality settings.
 
 If no stream profile is selected, streams are added without a profile assignment.
 
 ## Default Channel Group
 
-Configure which Dispatcharr channel group to assign Teamarr-managed channels to by default.
+Configure which Dispatcharr channel group to assign Apex-managed channels to by default.
 
 ### Channel Group
 
@@ -95,6 +95,6 @@ Per-league overrides in [Settings > Channels](channels#per-league-channel-config
 When enabled, removes **all** unused logos from Dispatcharr after EPG generation.
 
 {: .warning }
-This affects all unused logos in Dispatcharr, not just ones uploaded by Teamarr. Use with caution if you have manually uploaded logos that are not actively assigned to channels.
+This affects all unused logos in Dispatcharr, not just ones uploaded by Apex. Use with caution if you have manually uploaded logos that are not actively assigned to channels.
 
 See [Dispatcharr Integration Guide](../dispatcharr-integration) for complete setup details.

@@ -1,4 +1,4 @@
-"""Tests for team short_name template variables (teamarrv2-d33).
+"""Tests for team short_name template variables (apexv2-d33).
 
 Verifies that {team_short}, {opponent_short}, {matchup_short},
 {home_team_short}, and {away_team_short} extract correctly
@@ -7,17 +7,17 @@ in both team and event template contexts.
 
 from datetime import UTC, datetime
 
-from teamarr.core import Event, EventStatus, Team
-from teamarr.templates.context import (
+from apex.core import Event, EventStatus, Team
+from apex.templates.context import (
     GameContext,
     TeamChannelContext,
     TemplateContext,
 )
-from teamarr.templates.variables.home_away import (
+from apex.templates.variables.home_away import (
     extract_away_team_short,
     extract_home_team_short,
 )
-from teamarr.templates.variables.identity import (
+from apex.templates.variables.identity import (
     extract_matchup_short,
     extract_opponent_short,
     extract_team_short,

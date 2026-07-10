@@ -42,7 +42,7 @@ export interface ReconciliationIssue {
 }
 
 export interface ReconciliationSummary {
-  orphan_teamarr: number
+  orphan_apex: number
   orphan_dispatcharr: number
   duplicate: number
   drift: number
@@ -127,12 +127,12 @@ export async function getPendingDeletions(): Promise<PendingDeletionsResponse> {
   return api.get("/channels/pending-deletions")
 }
 
-// Delete an orphan channel directly from Dispatcharr (not tracked in Vroomarr)
+// Delete an orphan channel directly from Dispatcharr (not tracked in Apex)
 export async function deleteDispatcharrChannel(channelId: number): Promise<DeleteResponse> {
   return api.delete(`/channels/dispatcharr/${channelId}`)
 }
 
-// Reset All - preview and delete all Vroomarr channels from Dispatcharr
+// Reset All - preview and delete all Apex channels from Dispatcharr
 export interface ResetChannelInfo {
   dispatcharr_channel_id: number
   uuid: string | null

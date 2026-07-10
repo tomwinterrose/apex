@@ -12,7 +12,7 @@ Update notifications, backup/restore, local caching, and API configuration.
 
 ## Update Notifications
 
-Teamarr can check for new versions and notify you when updates are available.
+Apex can check for new versions and notify you when updates are available.
 
 ### Current Version
 
@@ -36,7 +36,7 @@ Manually trigger an update check. Results are cached for 1 hour.
 
 ### Download Backup
 
-Download a complete backup of your Teamarr database, including:
+Download a complete backup of your Apex database, including:
 - All teams and their configurations
 - Templates and presets
 - Event groups
@@ -51,7 +51,7 @@ Restoring a backup replaces ALL current data. The application needs to be restar
 
 ## Local Caching
 
-Teamarr caches team and league data from ESPN and TheSportsDB to improve performance and enable offline matching.
+Apex caches team and league data from ESPN and TheSportsDB to improve performance and enable offline matching.
 
 ### Cache Status
 
@@ -91,7 +91,7 @@ Customize the generator information included in the XMLTV output file.
 
 | Field | Default |
 |-------|---------|
-| **Generator Name** | Teamarr |
-| **Generator URL** | https://github.com/Pharaoh-Labs/teamarr |
+| **Generator Name** | Apex |
+| **Generator URL** | https://github.com/tomwinterrose/apex |
 
 These values appear in the XMLTV file header and are used by some media servers to identify the EPG source.

@@ -135,7 +135,7 @@ export function EpgMatchingSettings() {
           <p className="text-sm text-muted-foreground">
             Pull candidate streams from the channels you've curated in Dispatcharr, using each
             channel's own EPG — so you match only your mapped channel versions, not every stream
-            in a provider group. Vroomarr's own channels are excluded.
+            in a provider group. Apex's own channels are excluded.
           </p>
         }
       >

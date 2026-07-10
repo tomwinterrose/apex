@@ -224,7 +224,7 @@ export function GeneralTab({ settings }: { settings: AllSettings }) {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Explainer: the two timezones */}
-          <Alert variant="info" title="Vroomarr uses two timezones">
+          <Alert variant="info" title="Apex uses two timezones">
             <ul className="list-disc list-inside space-y-0.5">
               <li><strong>UI Display</strong> — how times appear in this interface. Set by the <code>TZ</code> environment variable.</li>
               <li><strong>EPG Output</strong> — the timezone written into generated EPG/XMLTV and template variables like {"{game_time}"}.</li>

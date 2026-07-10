@@ -13,14 +13,14 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from teamarr.consumers.filler.generator import FillerGenerator
-from teamarr.consumers.filler.types import (
+from apex.consumers.filler.generator import FillerGenerator
+from apex.consumers.filler.types import (
     FillerConfig,
     FillerOptions,
     FillerTemplate,
 )
-from teamarr.core.types import Event, EventStatus, Team
-from teamarr.templates.context import TeamChannelContext
+from apex.core.types import Event, EventStatus, Team
+from apex.templates.context import TeamChannelContext
 
 ET = ZoneInfo("America/New_York")
 
@@ -36,7 +36,7 @@ def mock_league_mapping_service():
     svc.get_gracenote_category.side_effect = lambda code: code.upper()
     svc.get_sport_display_name.side_effect = lambda code: code.title()
     with patch(
-        "teamarr.services.league_mappings._league_mapping_service",
+        "apex.services.league_mappings._league_mapping_service",
         svc,
     ):
         yield svc
