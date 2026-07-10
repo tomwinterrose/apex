@@ -1099,7 +1099,8 @@ def is_racing(
 RACING_TEXT_EVIDENCE: Pattern[str] = re.compile(
     r"\b(?:"
     r"formula\s*[123e]|f1|nascar|indycar|indy\s*(?:500|nxt)|"
-    r"motogp|moto\s*[23]|grand\s+prix|imsa|supercross|motocross"
+    r"motogp|moto\s*[23]|grand\s+prix|imsa|supercross|motocross|"
+    r"wec|world\s+endurance"
     r")\b",
     re.IGNORECASE,
 )

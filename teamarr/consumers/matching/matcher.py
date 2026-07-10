@@ -739,6 +739,25 @@ class StreamMatcher:
                 )
                 continue
 
+            # Same text-evidence gate as the racing fallback below
+            # (teamarrv2-w42k), applied here too: in a racing-dominant group
+            # _get_dominant_event_type() returns "event" directly, so this
+            # primary classify_stream call already defaults arbitrary EPG
+            # titles (documentaries, movies) to RACING_EVENT with no series
+            # name in the text — the fallback's gate never even runs for
+            # these groups since primary_outcomes already "succeeds". Without
+            # this check, any program on any linear channel resolved into a
+            # racing-only group (e.g. an unrelated local affiliate) can bind
+            # to "the one race happening this weekend" by date coverage alone.
+            if classified.category == StreamCategory.RACING_EVENT and not (
+                has_racing_text_evidence(epg_input)
+            ):
+                logger.debug(
+                    "[EPG_MATCH] racing programme skipped, no series name in text: %s",
+                    epg_input[:60],
+                )
+                continue
+
             # TEAM_ONLY gate: skip team routing when disabled, but allow the
             # racing fallback to run if racing leagues are present. A race title
             # like "F1 | Monaco Grand Prix" classifies TEAM_ONLY in a mixed
