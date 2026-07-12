@@ -11,7 +11,11 @@ from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
-from apex.consumers.matching.classifier import StreamCategory, classify_stream
+from apex.consumers.matching.classifier import (
+    StreamCategory,
+    classify_stream,
+    detect_racing_series_leagues,
+)
 from apex.consumers.matching.racing_matcher import RacingMatchContext, RacingMatcher
 from apex.consumers.racing_segments import (
     _is_practice_session,
@@ -390,7 +394,8 @@ class TestSessionCategoryFromStreamName:
         ) == "qualifying"
 
     def test_bare_race(self):
-        assert _session_category_from_stream_name("AU (STAN) | Race: 6 Hours of Sao Paulo") == "race"
+        name = "AU (STAN) | Race: 6 Hours of Sao Paulo"
+        assert _session_category_from_stream_name(name) == "race"
 
     def test_generic_channel_name_has_no_hint(self):
         # Linear/whole-weekend channel names must not trip narrowing.
@@ -412,7 +417,7 @@ class TestSessionCategoryFromStreamName:
             "CA (TSN+ 021) | NASCAR Cup Series Qualifying: Quaker State 400 (2026-07-11 16:30:00)"
         ) == "qualifying"
         assert _session_category_from_stream_name(
-            "CA (TSN+ 015) | 2026 NASCAR ORAP Series Qualifying: Focused Health 250 (2026-07-11 11:00:00)"
+            "CA (TSN+ 015) | 2026 NASCAR ORAP Series Qualifying: Focused Health 250 (2026-07-11 11:00:00)"  # noqa: E501
         ) == "qualifying"
 
     def test_trailing_unnumbered_practice_keyword(self):
@@ -438,7 +443,7 @@ class TestSessionCategoryFromStreamName:
             "2026 NASCAR CRAFTSMAN Truck Series: LiUNA 150 (2026-07-11 13:00:00)"
         ) is None
         assert _session_category_from_stream_name(
-            "CA (TSN+ 036) | NASCAR Cup Series On_Board Camera: Quaker State 400 (2026-07-12 19:00:00)"
+            "CA (TSN+ 036) | NASCAR Cup Series On_Board Camera: Quaker State 400 (2026-07-12 19:00:00)"  # noqa: E501
         ) is None
 
 
@@ -555,7 +560,123 @@ def test_expand_racing_segments_produces_no_channel_when_only_practice_exists():
     # A single-session (practice-only) event matched by a generic stream:
     # rather than land the stream on a Practice channel with nothing airing
     # yet, no segment — and so no channel — should be produced at all.
-    sessions = [SimpleNamespace(code="practice", name="Practice", start_time=datetime(2026, 7, 11, 9, tzinfo=UTC))]
+    sessions = [
+        SimpleNamespace(code="practice", name="Practice",
+                        start_time=datetime(2026, 7, 11, 9, tzinfo=UTC)),
+    ]
     matched = [{"stream": {"id": 1, "name": "TSN+ 016"}, "event": _wec_event(sessions)}]
     out = expand_racing_segments(matched)
     assert out == []
+
+
+# ---------------------------------------------------------------------------
+# Series scoping: a stream naming a specific series must only match that
+# series' league(s) — and match nothing when that series isn't configured.
+# ---------------------------------------------------------------------------
+
+
+class TestDetectRacingSeriesLeagues:
+    def test_motogp(self):
+        assert detect_racing_series_leagues(
+            "CA (SN+ 017) | MotoGP _ Grand Prix of Germany (2026-07-12 07:15:00)"
+        ) == ("motogp",)
+
+    def test_nascar_umbrella(self):
+        assert detect_racing_series_leagues("NASCAR Cup Series at San Diego") == (
+            "nascar-cup", "nascar-xfinity", "nascar-truck",
+        )
+
+    def test_f2_and_f3_are_distinct_from_f1(self):
+        assert detect_racing_series_leagues("Formula 2 | Hungarian GP") == ("f2",)
+        assert detect_racing_series_leagues("F3: Feature Race") == ("f3",)
+        assert detect_racing_series_leagues("F1 | Monaco Grand Prix") == ("f1",)
+
+    def test_wec(self):
+        assert detect_racing_series_leagues("FIA WEC | ROUND 5") == ("wec",)
+        assert detect_racing_series_leagues("World Endurance Championship") == ("wec",)
+
+    def test_generic_grand_prix_is_unscoped(self):
+        # "grand prix" is racing evidence but names no series — must stay
+        # unscoped so a bare "Monaco Grand Prix" stream can still match F1.
+        assert detect_racing_series_leagues("Monaco Grand Prix") is None
+
+    def test_empty(self):
+        assert detect_racing_series_leagues("") is None
+        assert detect_racing_series_leagues("ESPN 2 (US)") is None
+
+
+def _racing_group_matcher(leagues):
+    from tests.fakes import make_stream_matcher
+
+    return make_stream_matcher(
+        leagues=tuple(leagues),
+        league_event_types={lg: "event" for lg in leagues},
+        league_sports={lg: "racing" for lg in leagues},
+    )
+
+
+def _matched_racing_outcome():
+    from types import SimpleNamespace
+
+    from apex.consumers.matching.result import MatchMethod, MatchOutcome
+
+    event = SimpleNamespace(league="imsa", id="tsdb_imsa_2026_7", start_time=None,
+                            short_name="Chevrolet Grand Prix")
+    return MatchOutcome.matched(MatchMethod.FUZZY, event=event, confidence=0.9)
+
+
+def test_racing_series_scoping_blocks_unconfigured_series(monkeypatch):
+    # Live false-match regression (teamarr#394 follow-up): two "MotoGP -
+    # Grand Prix of Germany" streams direct-matched IMSA's "Chevrolet Grand
+    # Prix" — the only racing event covering the date — because motogp isn't
+    # a configured league and the shared "Grand Prix" tokens cleared the
+    # single-event sanity bar. A stream naming an unconfigured series must
+    # match nothing.
+    m = _racing_group_matcher(["imsa", "wec"])
+    racing_called = []
+    monkeypatch.setattr(
+        m._racing_matcher, "match",
+        lambda **kw: racing_called.append(kw["league"]) or _matched_racing_outcome(),
+    )
+
+    rc = classify_stream(
+        "CA (SN+ 017) | MotoGP _ Grand Prix of Germany (2026-07-12 07:15:00)", "event"
+    )
+    assert rc.category == StreamCategory.RACING_EVENT
+    out = m._match_racing_event(rc, 1, date(2026, 7, 12))
+    assert not racing_called  # imsa/wec must never be attempted
+    assert not out.is_matched
+
+
+def test_racing_series_scoping_restricts_to_named_league(monkeypatch):
+    # A stream naming IMSA in a group with several racing leagues must only
+    # try imsa — not fan out across the others.
+    m = _racing_group_matcher(["f1", "imsa", "wec"])
+    racing_called = []
+    monkeypatch.setattr(
+        m._racing_matcher, "match",
+        lambda **kw: racing_called.append(kw["league"]) or _matched_racing_outcome(),
+    )
+
+    rc = classify_stream(
+        "US (Peacock 031) | IMSA CTMP Grand Prix (2026-07-12 14:00:00)", "event"
+    )
+    out = m._match_racing_event(rc, 1, date(2026, 7, 12))
+    assert racing_called == ["imsa"]
+    assert out.is_matched
+
+
+def test_racing_generic_name_stays_unscoped(monkeypatch):
+    # No series named ("Monaco Grand Prix") → all racing leagues remain
+    # eligible, preserving pre-scoping behavior.
+    m = _racing_group_matcher(["f1"])
+    racing_called = []
+    monkeypatch.setattr(
+        m._racing_matcher, "match",
+        lambda **kw: racing_called.append(kw["league"]) or _matched_racing_outcome(),
+    )
+
+    rc = classify_stream("Monaco Grand Prix (2026-06-01 13:00:00)", "event")
+    out = m._match_racing_event(rc, 1, date(2026, 6, 1))
+    assert racing_called == ["f1"]
+    assert out.is_matched
