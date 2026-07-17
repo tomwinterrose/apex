@@ -72,11 +72,22 @@ def normalize_channel_name(name: str) -> str:
     return re.sub(r"\s+", " ", n).strip()
 
 
+# Dispatcharr's own channel-proxy URL shape. A "Dispatcharr inside
+# Dispatcharr" loopback M3U emits one stream per channel whose URL is
+# /proxy/ts/stream/<channel uuid> — the uuid is the source channel's stable
+# identity, unlike the loopback stream's own id/tvg_id which churn on every
+# playlist refresh.
+_PROXY_STREAM_UUID = re.compile(
+    r"/proxy/ts/stream/([0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})"
+)
+
+
 def resolve_program_tvg_ids(
     streams: list[dict],
     epg_data_list: list[dict],
     stream_channel_map: dict[int, dict],
     active_source_ids: set[int] | None = None,
+    channel_by_uuid: dict[str, dict] | None = None,
 ) -> tuple[dict[str, str], dict[str, int]]:
     """Map each candidate stream's ``tvg_id`` -> an EPG-source ``tvg_id``.
 
@@ -86,6 +97,11 @@ def resolve_program_tvg_ids(
        ``epg_data_id``. This is an explicit user/auto curation ("this stream IS
        this guide channel"), so it is trusted unconditionally — even if the
        linked EPG source is inactive (it simply yields no programs then).
+    1b. **loopback** — the stream's URL is Dispatcharr's own channel proxy
+       (``/proxy/ts/stream/<uuid>``, from a Dispatcharr-loopback M3U). The
+       uuid identifies the source channel, whose EPG link carries the same
+       curated trust as channel membership — and unlike membership it
+       survives the loopback account's stream-id churn on refresh.
     2. **direct** — the stream ``tvg_id`` already equals an imported-EPG
        ``tvg_id`` (namespace-aligned M3U + EPG). Exact id match.
     3. **name** — the stream NAME maps to exactly one imported-EPG ``tvg_id``
@@ -130,7 +146,10 @@ def resolve_program_tvg_ids(
             name_to_tvgids.setdefault(norm, set()).add(tvg)
 
     resolution: dict[str, str] = {}
-    stats = {"channel": 0, "direct": 0, "name": 0, "unresolved": 0, "ambiguous_name": 0}
+    stats = {
+        "channel": 0, "loopback": 0, "direct": 0, "name": 0,
+        "unresolved": 0, "ambiguous_name": 0,
+    }
 
     for s in streams:
         s_tvg = s.get("tvg_id")
@@ -147,6 +166,18 @@ def resolve_program_tvg_ids(
                 resolution[s_tvg] = ed["tvg_id"]
                 stats["channel"] += 1
                 continue
+
+        # 1b. Loopback: the stream URL names its source channel by uuid.
+        if channel_by_uuid:
+            m = _PROXY_STREAM_UUID.search(s.get("url") or "")
+            ch = channel_by_uuid.get(m.group(1).lower()) if m else None
+            if ch:
+                eid = ch.get("effective_epg_data_id") or ch.get("epg_data_id")
+                ed = epgdata_by_id.get(eid)
+                if ed and ed.get("tvg_id"):
+                    resolution[s_tvg] = ed["tvg_id"]
+                    stats["loopback"] += 1
+                    continue
 
         # 2. Direct: the stream tvg_id is itself an active imported-EPG tvg_id.
         if s_tvg in epgdata_tvgids:
@@ -167,9 +198,9 @@ def resolve_program_tvg_ids(
         stats["unresolved"] += 1
 
     logger.info(
-        "[EPG-RESOLVE] resolved %d stream tvg_ids (channel=%d direct=%d name=%d "
-        "ambiguous_name=%d unresolved=%d)",
-        len(resolution), stats["channel"], stats["direct"], stats["name"],
-        stats["ambiguous_name"], stats["unresolved"],
+        "[EPG-RESOLVE] resolved %d stream tvg_ids (channel=%d loopback=%d direct=%d "
+        "name=%d ambiguous_name=%d unresolved=%d)",
+        len(resolution), stats["channel"], stats["loopback"], stats["direct"],
+        stats["name"], stats["ambiguous_name"], stats["unresolved"],
     )
     return resolution, stats

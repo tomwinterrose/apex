@@ -191,3 +191,96 @@ def test_first_stream_wins_for_shared_tvg_id():
     epg = _epgdata([(100, "82547", "FS1 HD")])
     res, _ = resolve_program_tvg_ids(streams, epg, {})
     assert res == {"dup.us": "82547"}
+
+
+# ==================================================================== loopback
+
+
+_UUID = "523949c3-ac85-4c4a-baa7-bc9800000000"
+
+
+def _loopback_stream(sid=7, tvg="166", name="Sky Sports F1 HD", uuid=_UUID):
+    # A Dispatcharr-loopback M3U stream: tvg_id is the channel NUMBER (churns
+    # meaning), url names the source channel by its stable uuid.
+    return {
+        "id": sid,
+        "name": name,
+        "tvg_id": tvg,
+        "url": f"http://192.168.7.220:9191/proxy/ts/stream/{uuid}",
+    }
+
+
+def test_loopback_resolves_via_source_channel_uuid():
+    # Live case: the loopback stream is in NO channel, its tvg_id ("166", a
+    # channel number) exists in no guide, and its name is ambiguous across
+    # multiple guide entries — only the proxy URL identifies it.
+    streams = [_loopback_stream()]
+    epg = _epgdata([
+        (200, "87578", "Sky Sports F1 HD"),
+        (201, "131261", "Sky Sports F1 UHD"),
+    ])
+    res, stats = resolve_program_tvg_ids(
+        streams, epg, {}, channel_by_uuid={_UUID: {"epg_data_id": 200}}
+    )
+    assert res == {"166": "87578"}
+    assert stats["loopback"] == 1
+
+
+def test_loopback_survives_stream_id_churn():
+    # The loopback account recreates streams (new ids) on every refresh; the
+    # uuid in the URL is the stable identity, so resolution must not depend
+    # on the stream id appearing in the stream->channel map.
+    streams = [_loopback_stream(sid=999999)]
+    epg = _epgdata([(200, "87578", "Sky Sports F1 HD")])
+    res, stats = resolve_program_tvg_ids(
+        streams, epg, {12345: {"epg_data_id": 200}},  # stale map, old id
+        channel_by_uuid={_UUID: {"epg_data_id": 200}},
+    )
+    assert res == {"166": "87578"}
+    assert stats["loopback"] == 1
+
+
+def test_channel_membership_outranks_loopback():
+    streams = [_loopback_stream(sid=7)]
+    epg = _epgdata([(200, "87578", "Sky Sports F1 HD"), (300, "99999", "Other")])
+    res, stats = resolve_program_tvg_ids(
+        streams, epg, {7: {"epg_data_id": 300}},
+        channel_by_uuid={_UUID: {"epg_data_id": 200}},
+    )
+    assert res == {"166": "99999"}
+    assert stats["channel"] == 1 and stats["loopback"] == 0
+
+
+def test_loopback_uuid_lookup_is_case_insensitive():
+    streams = [_loopback_stream(uuid=_UUID.upper())]
+    epg = _epgdata([(200, "87578", "Sky Sports F1 HD")])
+    res, stats = resolve_program_tvg_ids(
+        streams, epg, {}, channel_by_uuid={_UUID: {"epg_data_id": 200}}
+    )
+    assert res == {"166": "87578"}
+    assert stats["loopback"] == 1
+
+
+def test_unknown_uuid_falls_through_to_name_cascade():
+    # A proxy-shaped URL whose uuid isn't a known channel must not block the
+    # rest of the cascade.
+    streams = [_loopback_stream(uuid="00000000-0000-0000-0000-000000000000")]
+    epg = _epgdata([(200, "87578", "Sky Sports F1 HD")])
+    res, stats = resolve_program_tvg_ids(
+        streams, epg, {}, channel_by_uuid={_UUID: {"epg_data_id": 200}}
+    )
+    assert res == {"166": "87578"}
+    assert stats["name"] == 1
+
+
+def test_non_loopback_url_ignores_uuid_map():
+    streams = [{
+        "id": 7, "name": "Sky Sports F1 HD", "tvg_id": "sky.uk",
+        "url": "https://provider.example/live/user/pass/369549.ts",
+    }]
+    epg = _epgdata([(200, "87578", "Sky Sports F1 HD")])
+    res, stats = resolve_program_tvg_ids(
+        streams, epg, {}, channel_by_uuid={_UUID: {"epg_data_id": 200}}
+    )
+    assert res == {"sky.uk": "87578"}
+    assert stats["name"] == 1 and stats["loopback"] == 0

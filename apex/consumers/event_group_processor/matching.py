@@ -184,11 +184,14 @@ class StreamMatching:
         from apex.consumers.matching.epg_resolver import resolve_program_tvg_ids
 
         # Resolve stream tvg_ids -> EPG-source tvg_ids. Needs the EPGData catalog
-        # (for direct + name matching) and the stream->channel map (for the
-        # curated channel fallback). Both are single scoped fetches.
+        # (for direct + name matching) and the channel maps (stream->channel for
+        # the curated channel fallback, uuid->channel for loopback streams).
+        # Both are single scoped fetches.
         try:
             epg_data_list = self._dispatcharr_client.channels.get_epg_data_list()
-            stream_channels = self._dispatcharr_client.channels.get_stream_channel_map()
+            stream_channels, channel_by_uuid = (
+                self._dispatcharr_client.channels.get_channel_maps()
+            )
         except Exception as e:
             logger.warning("[EPG-MATCH] Failed to load EPG resolution data: %s", e)
             return None
@@ -199,7 +202,9 @@ class StreamMatching:
         active_source_ids = self._active_epg_source_ids()
         own_source_name = self._own_epg_source_name()
         resolution, _stats = resolve_program_tvg_ids(
-            streams, epg_data_list, stream_channels, active_source_ids=active_source_ids
+            streams, epg_data_list, stream_channels,
+            active_source_ids=active_source_ids,
+            channel_by_uuid=channel_by_uuid,
         )
 
         # Window mirrors the event match window so programs overlapping any
