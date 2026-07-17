@@ -969,3 +969,66 @@ def test_expand_scopes_apple_tv_race_stream_to_race_only():
     }
     out = expand_racing_segments([entry])
     assert [m["segment"] for m in out] == ["race"]
+
+
+# ---------------------------------------------------------------------------
+# RacingMatcher season-year gate: archival replays name the wrong year
+# ---------------------------------------------------------------------------
+
+
+def _match_named_stream(name, anchor_dt):
+    event = _belgian_gp()
+    service = _FakeSportsService([event])
+    matcher = RacingMatcher(service=service, cache=_FakeMatchCache())
+    classified = classify_stream(name, league_event_type="event")
+    assert classified.category == StreamCategory.RACING_EVENT
+    return matcher.match(
+        classified=classified,
+        league="f1",
+        target_date=date(2026, 7, 19),
+        group_id=1,
+        stream_id=1,
+        generation=1,
+        user_tz=ZoneInfo("America/Chicago"),
+        anchor_dt=anchor_dt,
+    )
+
+
+def test_archival_replay_naming_old_year_is_rejected():
+    # Live (Plex FAST "F1 Channel"): "2008 Belgian Grand Prix" aired 33 min
+    # into 2026 qualifying — inside anchor tolerance, racing text evidence,
+    # near-perfect fuzzy score. The year is the tell.
+    out = _match_named_stream(
+        "2008 Belgian Grand Prix", datetime(2026, 7, 19, 13, 33, tzinfo=UTC)
+    )
+    assert not out.is_matched
+    assert "archival" in (out.detail or "")
+
+
+def test_last_years_replay_is_rejected():
+    out = _match_named_stream(
+        "F1 2025 Belgium Grand Prix", datetime(2026, 7, 19, 13, 33, tzinfo=UTC)
+    )
+    assert not out.is_matched
+
+
+def test_current_year_in_text_still_matches():
+    out = _match_named_stream(
+        "Formula 1 2026: Belgian Grand Prix Race", datetime(2026, 7, 19, 13, 0, tzinfo=UTC)
+    )
+    assert out.is_matched
+
+
+def test_no_year_in_text_is_unaffected():
+    out = _match_named_stream(
+        "Live: Formula 1 | Belgian Grand Prix: Race", datetime(2026, 7, 19, 13, 0, tzinfo=UTC)
+    )
+    assert out.is_matched
+
+
+def test_resolution_tokens_do_not_read_as_years():
+    # "2160P" must not be treated as a season year and veto the match.
+    out = _match_named_stream(
+        "NOW: BELGIAN GRAND PRIX RACE 2160P", datetime(2026, 7, 19, 13, 0, tzinfo=UTC)
+    )
+    assert out.is_matched

@@ -15,6 +15,7 @@ Matching strategy:
 """
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -67,6 +68,16 @@ SINGLE_EVENT_SANITY_THRESHOLD = 50
 # session is not a broadcast of that event.
 # (Value lives in racing_segments, shared with EPG session scoping; re-exported
 # here for the anchor-gate usage below and existing importers.)
+
+# Plausible season years in stream/programme text (1950 — F1's first season —
+# through 2049). Deliberately NOT \d{4}: resolutions ("2160p"), bitrates and
+# channel numbers must not read as years.
+_YEAR_RE = re.compile(r"\b(19[5-9]\d|20[0-4]\d)\b")
+
+
+def _years_in_text(text: str) -> set[int]:
+    """All plausible season years mentioned in ``text``."""
+    return {int(m) for m in _YEAR_RE.findall(text)}
 
 
 @dataclass
@@ -197,6 +208,27 @@ class RacingMatcher:
                 detail=f"No {league} events covering {ctx.target_date}",
             )
 
+        # Season-year gate: text naming a year that isn't a candidate event's
+        # year is archival, not coverage. FAST channels air classic races
+        # around the current weekend ("2008 Belgian Grand Prix" started 33
+        # minutes into 2026 qualifying — inside anchor tolerance, carrying
+        # racing text evidence, and a near-perfect fuzzy match). A text with
+        # no year (the normal case) is unaffected; any mentioned year
+        # matching the event keeps it ("... Indycar 2026 (2026-07-19 ...)").
+        years = _years_in_text(ctx.stream_name)
+        if years:
+            window_events = [e for e in window_events if e.start_time.year in years]
+            if not window_events:
+                return MatchOutcome.failed(
+                    FailedReason.NO_RACING_MATCH,
+                    stream_name=ctx.stream_name,
+                    stream_id=stream_id,
+                    detail=(
+                        f"Text names year(s) {sorted(years)} matching no "
+                        f"{league} event covering {ctx.target_date} (archival?)"
+                    ),
+                )
+
         # EPG path only: further gate to events with a session actually airing
         # near the program's broadcast instant, not just sharing a date.
         if anchor_dt is not None:
@@ -284,6 +316,14 @@ class RacingMatcher:
 
         # Validate date - cached event's window must still cover target date
         if not self._covers_date(event, ctx.target_date, ctx.user_tz):
+            return None
+
+        # Season-year gate, same as match(): a cached archival bind ("2008
+        # Belgian Grand Prix" cached before the gate existed) must not keep
+        # resurrecting through the cache.
+        years = _years_in_text(ctx.stream_name)
+        if years and event.start_time.year not in years:
+            self._cache.delete(ctx.group_id, ctx.stream_id, ctx.stream_name)
             return None
 
         # EPG path only: cached match must still have a session airing near
