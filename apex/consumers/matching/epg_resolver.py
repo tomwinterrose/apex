@@ -81,6 +81,12 @@ _PROXY_STREAM_UUID = re.compile(
     r"/proxy/ts/stream/([0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})"
 )
 
+# tvg_id prefixes of SYNTHETIC event-channel guide entries (ours and
+# teamarr's). These are generated placeholder/event guides, not real
+# broadcast listings — resolving a stream to one must never happen (see
+# _resolvable below).
+_SYNTHETIC_EVENT_TVG_PREFIXES = ("apex-event-", "teamarr-event-")
+
 
 def resolve_program_tvg_ids(
     streams: list[dict],
@@ -141,7 +147,17 @@ def resolve_program_tvg_ids(
     def _resolvable(ed: dict | None) -> bool:
         if not ed or not ed.get("tvg_id"):
             return False
-        return own_source_id is None or ed.get("epg_source") != own_source_id
+        if own_source_id is not None and ed.get("epg_source") == own_source_id:
+            return False
+        # Not only OUR generated guide: a sibling teamarr install writing to
+        # the same Dispatcharr consolidates streams into ITS event channels,
+        # whose synthetic guide airs all-day "Coming up: F1 Racing ..."
+        # placeholder blocks. Resolving a stream to any such guide binds it
+        # to every session of the named event (live: TSN 5, which airs only
+        # Qualifying + Race, landed on all five Belgian GP session channels
+        # via teamarr's placeholders). Event-channel guides are identifiable
+        # by their code-controlled tvg prefixes.
+        return not str(ed["tvg_id"]).startswith(_SYNTHETIC_EVENT_TVG_PREFIXES)
 
     # Direct + name match only the ACTIVE imported EPG (honor enabled sources).
     if active_source_ids is not None:

@@ -321,3 +321,23 @@ def test_own_guide_link_still_trusted_when_own_source_unknown():
     )
     assert res == {"166": "apex-f1-race"}
     assert stats["channel"] == 1
+
+
+def test_sibling_teamarr_event_guide_link_falls_through():
+    # Same poisoning as our own guide, via a sibling install: teamarr
+    # consolidated the stream into ITS event channel, whose synthetic guide
+    # airs all-day "Coming up: F1 Racing ..." blocks that bind the stream to
+    # every session (live: TSN 5 landed on all five Belgian GP channels).
+    # Synthetic event guides are identified by tvg prefix, not source id.
+    streams = [_loopback_stream(sid=7)]
+    epg = _epgdata([(200, "87578", "Sky Sports F1 HD")])
+    epg.append({"id": 950, "tvg_id": "teamarr-event-600057439-qualifying",
+                "name": "F1 | Belgian Grand Prix - Qualifying", "epg_source": 8})
+    res, stats = resolve_program_tvg_ids(
+        streams, epg,
+        {7: {"epg_data_id": 950}},          # membership in teamarr's channel
+        channel_by_uuid={_UUID: {"epg_data_id": 200}},
+        own_source_id=32,
+    )
+    assert res == {"166": "87578"}
+    assert stats["loopback"] == 1 and stats["channel"] == 0
