@@ -284,3 +284,40 @@ def test_non_loopback_url_ignores_uuid_map():
     )
     assert res == {"sky.uk": "87578"}
     assert stats["name"] == 1 and stats["loopback"] == 0
+
+
+# ===================================================== own-guide link poisoning
+
+
+def test_own_guide_channel_link_falls_through_to_loopback():
+    # Feedback loop (live, Belgian GP): a matched stream gets consolidated
+    # into the Apex-managed event channel it matched; next run the channel
+    # path resolves it to our OWN generated guide, whose programmes the
+    # index excludes — EPG matching dies for that stream forever. Own-guide
+    # links must not terminate the cascade.
+    streams = [_loopback_stream(sid=7)]
+    epg = _epgdata([(200, "87578", "Sky Sports F1 HD")])
+    epg.append({"id": 900, "tvg_id": "apex-f1-race", "name": "F1: Belgian GP - Race",
+                "epg_source": 32})
+    res, stats = resolve_program_tvg_ids(
+        streams, epg,
+        {7: {"epg_data_id": 900}},          # membership in own event channel
+        channel_by_uuid={_UUID: {"epg_data_id": 200}},
+        own_source_id=32,
+    )
+    assert res == {"166": "87578"}
+    assert stats["loopback"] == 1 and stats["channel"] == 0
+
+
+def test_own_guide_link_still_trusted_when_own_source_unknown():
+    # Without own_source_id (back-compat), behavior is unchanged.
+    streams = [_loopback_stream(sid=7)]
+    epg = _epgdata([(200, "87578", "Sky Sports F1 HD")])
+    epg.append({"id": 900, "tvg_id": "apex-f1-race", "name": "F1: Belgian GP - Race",
+                "epg_source": 32})
+    res, stats = resolve_program_tvg_ids(
+        streams, epg, {7: {"epg_data_id": 900}},
+        channel_by_uuid={_UUID: {"epg_data_id": 200}},
+    )
+    assert res == {"166": "apex-f1-race"}
+    assert stats["channel"] == 1

@@ -88,6 +88,7 @@ def resolve_program_tvg_ids(
     stream_channel_map: dict[int, dict],
     active_source_ids: set[int] | None = None,
     channel_by_uuid: dict[str, dict] | None = None,
+    own_source_id: int | None = None,
 ) -> tuple[dict[str, str], dict[str, int]]:
     """Map each candidate stream's ``tvg_id`` -> an EPG-source ``tvg_id``.
 
@@ -127,8 +128,20 @@ def resolve_program_tvg_ids(
         program_tvg_id}`` and ``stats`` counts hits per strategy plus
         ``unresolved`` and ``ambiguous_name`` for logging/observability.
     """
-    # Channel curation is trusted against the FULL catalog (the user linked it).
+    # Channel curation is trusted against the FULL catalog (the user linked it)
+    # — with ONE exception: links to our OWN generated guide. Apex's managed
+    # event channels carry our own EPG, and each run consolidates matched
+    # streams into them as sources — so on the NEXT run those streams
+    # channel-resolve to our own guide, whose programmes the index rightly
+    # excludes, and EPG matching silently dies (live: Sky Sports F1 matched
+    # the Belgian GP, was added to the GP channels it matched, and never
+    # matched again). Own-guide links don't terminate the cascade.
     epgdata_by_id = {e["id"]: e for e in epg_data_list if e.get("id") is not None}
+
+    def _resolvable(ed: dict | None) -> bool:
+        if not ed or not ed.get("tvg_id"):
+            return False
+        return own_source_id is None or ed.get("epg_source") != own_source_id
 
     # Direct + name match only the ACTIVE imported EPG (honor enabled sources).
     if active_source_ids is not None:
@@ -162,7 +175,7 @@ def resolve_program_tvg_ids(
         if ch:
             eid = ch.get("effective_epg_data_id") or ch.get("epg_data_id")
             ed = epgdata_by_id.get(eid)
-            if ed and ed.get("tvg_id"):
+            if _resolvable(ed):
                 resolution[s_tvg] = ed["tvg_id"]
                 stats["channel"] += 1
                 continue
@@ -174,7 +187,7 @@ def resolve_program_tvg_ids(
             if ch:
                 eid = ch.get("effective_epg_data_id") or ch.get("epg_data_id")
                 ed = epgdata_by_id.get(eid)
-                if ed and ed.get("tvg_id"):
+                if _resolvable(ed):
                     resolution[s_tvg] = ed["tvg_id"]
                     stats["loopback"] += 1
                     continue

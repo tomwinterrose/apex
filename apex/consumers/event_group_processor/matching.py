@@ -205,6 +205,7 @@ class StreamMatching:
             streams, epg_data_list, stream_channels,
             active_source_ids=active_source_ids,
             channel_by_uuid=channel_by_uuid,
+            own_source_id=self._own_epg_source_id(),
         )
 
         # Window mirrors the event match window so programs overlapping any
