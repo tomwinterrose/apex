@@ -1032,3 +1032,34 @@ def test_resolution_tokens_do_not_read_as_years():
         "NOW: BELGIAN GRAND PRIX RACE 2160P", datetime(2026, 7, 19, 13, 0, tzinfo=UTC)
     )
     assert out.is_matched
+
+
+# ---------------------------------------------------------------------------
+# Compound-word spelling tolerance in fuzzy scoring
+# ---------------------------------------------------------------------------
+
+
+def test_compound_spelling_mismatch_still_matches():
+    # Live (NASCAR Trucks, FaithFest 250): the guide writes "Faith Fest 250"
+    # but the provider event is "FaithFest 250 presented by Mercer
+    # Transportation" — plain token scoring shares only "250" and lands at
+    # 46.6, under the 50 sanity threshold, so the qualifying broadcast never
+    # matched. Bigram augmentation lets "faith fest" grow "faithfest".
+    a = _event("a", "FaithFest 250 presented by Mercer Transportation",
+               circuit="North Wilkesboro Speedway")
+    out = _matcher()._match_to_event(
+        _ctx("NASCAR Craftsman Truck Series | Faith Fest 250, Qualifying"),
+        [a], "nascar-truck",
+    )
+    assert out.is_matched and out.event.id == "a"
+
+
+def test_unrelated_stream_still_rejected_with_augmentation():
+    # The augmented pass must not rescue unrelated pairs: same FIM Speedway
+    # guard as above, still rejected.
+    a = _event("a", "Focused Health 250", circuit="Atlanta Motor Speedway")
+    out = _matcher()._match_to_event(
+        _ctx("HBO UK 047 | Malilla - FIM Speedway GP | Round 6 | Malilla"),
+        [a], "nascar-xfinity",
+    )
+    assert not out.is_matched

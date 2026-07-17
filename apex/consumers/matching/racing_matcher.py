@@ -80,6 +80,19 @@ def _years_in_text(text: str) -> set[int]:
     return {int(m) for m in _YEAR_RE.findall(text)}
 
 
+def _augment_compounds(normalized: str) -> str:
+    """Append fused adjacent-token bigrams to a normalized string.
+
+    Guides and providers disagree on compound-word spelling ("Faith Fest
+    250" vs "FaithFest 250"), leaving token-based scoring with only the
+    tokens both spellings share. Adding each adjacent pair fused as an
+    extra token lets either spelling grow the other's compound form, so
+    the pair scores as related without loosening the threshold.
+    """
+    tokens = normalized.split()
+    return " ".join(tokens + [a + b for a, b in zip(tokens, tokens[1:])])
+
+
 @dataclass
 class RacingMatchContext:
     """Context for racing event matching."""
@@ -358,6 +371,13 @@ class RacingMatcher:
         # unique-country fallback below (country-named streams, e.g.
         # "NASCAR Cup Series at Mexico City").
         stream_norm = normalize_text(ctx.stream_name)
+        # Compound-spelling tolerance: score the plain normalized forms AND
+        # bigram-augmented forms, taking the best. The augmented pass only
+        # ever helps when adjacent tokens fuse into the other side's
+        # compound spelling ("Faith Fest" -> "faithfest"); unrelated pairs
+        # score LOWER augmented (more non-shared tokens), and max() keeps
+        # their plain score, so no existing accept/reject flips.
+        stream_aug = _augment_compounds(stream_norm)
         best_score = 0
         best_event: Event | None = None
         country_scores: dict[str, float] = {}
@@ -366,7 +386,11 @@ class RacingMatcher:
             for candidate in (event.name, event.short_name, event.circuit_name):
                 if not candidate:
                     continue
-                score = fuzz.token_set_ratio(stream_norm, normalize_text(candidate))
+                cand_norm = normalize_text(candidate)
+                score = max(
+                    fuzz.token_set_ratio(stream_norm, cand_norm),
+                    fuzz.token_set_ratio(stream_aug, _augment_compounds(cand_norm)),
+                )
                 if score > best_score:
                     best_score = score
                     best_event = event
