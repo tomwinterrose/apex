@@ -105,12 +105,20 @@ def list_group_streams(account_id: int, group_id: int) -> list[dict]:
 
 
 @router.get("/channel-groups")
-def list_channel_groups(exclude_m3u: bool = True) -> list[dict]:
+def list_channel_groups(exclude_m3u: bool = True, with_channels: bool = False) -> list[dict]:
     """List Dispatcharr channel groups (for channel assignment).
 
     Args:
         exclude_m3u: If True, exclude groups originating from M3U accounts.
                      Defaults to True since M3U groups shouldn't be used for channel assignment.
+        with_channels: If True, only groups that contain at least one channel.
+                       The channel-source picker uses this INSTEAD of exclude_m3u:
+                       Dispatcharr shares one table between channel groups and M3U
+                       playlist groups, so a curated channel group becomes
+                       "M3U-originated" the moment any playlist reuses its name
+                       (a Dispatcharr-loopback M3U flags every channel group at
+                       once) — m3u linkage says nothing about whether a group
+                       holds channels.
 
     Returns:
         List of channel groups
@@ -120,11 +128,14 @@ def list_channel_groups(exclude_m3u: bool = True) -> list[dict]:
         raise HTTPException(status_code=503, detail="Dispatcharr not configured or unavailable")
 
     groups = conn.m3u.list_groups(exclude_m3u=exclude_m3u)
+    if with_channels:
+        groups = [g for g in groups if g.channel_count > 0]
     return [
         {
             "id": g.id,
             "name": g.name,
             "from_m3u": bool(g.m3u_accounts),
+            "channel_count": g.channel_count,
         }
         for g in groups
     ]

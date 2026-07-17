@@ -31,12 +31,12 @@ export function useStreamProfiles(enabled = true) {
   })
 }
 
-export function useChannelGroups(excludeM3u: boolean, enabled = true) {
+export function useChannelGroups(excludeM3u: boolean, enabled = true, withChannels = false) {
   return useQuery({
-    // excludeM3u is part of the key — the two variants return different lists
-    // and must not share a cache entry.
-    queryKey: ["dispatcharr-channel-groups", { excludeM3u }],
-    queryFn: () => getChannelGroups(excludeM3u),
+    // Filter flags are part of the key — each variant returns a different
+    // list and must not share a cache entry.
+    queryKey: ["dispatcharr-channel-groups", { excludeM3u, withChannels }],
+    queryFn: () => getChannelGroups(excludeM3u, withChannels),
     enabled,
     retry: false,
   })

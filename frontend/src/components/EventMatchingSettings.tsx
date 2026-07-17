@@ -40,9 +40,15 @@ export function EpgMatchingSettings() {
     setEPG(epgData)
   }
 
+  // Channel-source picker: groups that CONTAIN channels, regardless of M3U
+  // linkage. Dispatcharr flags a channel group as M3U-originated whenever any
+  // playlist reuses its name (a Dispatcharr-loopback M3U flags all of them),
+  // so the exclude_m3u filter used for channel-assignment pickers would hide
+  // legitimate curated groups here.
   const channelGroupsQuery = useChannelGroups(
-    true,
-    dispatcharrStatus.data?.connected ?? false
+    false,
+    dispatcharrStatus.data?.connected ?? false,
+    true
   )
 
   return (

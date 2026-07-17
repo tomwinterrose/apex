@@ -274,6 +274,7 @@ class DispatcharrChannelGroup:
     id: int
     name: str
     m3u_accounts: tuple[int, ...] = field(default_factory=tuple)
+    channel_count: int = 0
 
     @classmethod
     def from_api(cls, data: dict) -> "DispatcharrChannelGroup":
@@ -285,6 +286,7 @@ class DispatcharrChannelGroup:
             id=data["id"],
             name=data.get("name", ""),
             m3u_accounts=accounts,
+            channel_count=data.get("channel_count") or 0,
         )
 
 

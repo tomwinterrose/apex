@@ -22,6 +22,7 @@ export interface ChannelGroup {
   id: number
   name: string
   from_m3u: boolean
+  channel_count: number
 }
 
 async function emptyOn503<T>(promise: Promise<T[]>): Promise<T[]> {
@@ -47,8 +48,13 @@ export function getStreamProfiles(): Promise<StreamProfile[]> {
   return emptyOn503(api.get<StreamProfile[]>("/dispatcharr/stream-profiles"))
 }
 
-export function getChannelGroups(excludeM3u: boolean): Promise<ChannelGroup[]> {
+export function getChannelGroups(
+  excludeM3u: boolean,
+  withChannels = false
+): Promise<ChannelGroup[]> {
   return emptyOn503(
-    api.get<ChannelGroup[]>(`/dispatcharr/channel-groups?exclude_m3u=${excludeM3u}`)
+    api.get<ChannelGroup[]>(
+      `/dispatcharr/channel-groups?exclude_m3u=${excludeM3u}&with_channels=${withChannels}`
+    )
   )
 }
