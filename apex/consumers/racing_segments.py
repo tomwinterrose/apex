@@ -235,6 +235,33 @@ def _session_category_from_stream_name(stream_name: str) -> str | None:
     label = _isolate_stream_session_label(stream_name)
     if not label:
         return None
+    if category := _classify_session_label(label):
+        return category
+    # Fallback: the label isn't ENTIRELY a session type, but ENDS in one —
+    # e.g. NASCAR/TSN+'s "NASCAR Cup Series Qualifying" or "2026 NASCAR ORAP
+    # Series Qualifying", vs. tsdb/STAN's convention of the label being just
+    # "Qualifying" on its own (handled above).
+    if category := _session_category_from_trailing_keyword(label):
+        return category
+    # Apple-TV-PPV shape: "NEXT | BELGIUM: RACE | Sun 19 Jul ... | UK: ..."
+    # — the session name is a colon-VALUE in a middle segment, which the
+    # last-segment label isolation above never sees (live: dedicated
+    # "BELGIUM: RACE" streams fanned out onto the Qualifying channel). Scan
+    # every pipe segment's colon-separated fields with the ANCHORED
+    # classifiers only — the whole field must be a session name, so a
+    # session word merely embedded in branding text still doesn't count
+    # (no trailing-keyword fallback here).
+    for segment in stream_name.split("|"):
+        for field in segment.split(":", 1):
+            if category := _classify_session_label(field.strip()):
+                return category
+    return None
+
+
+def _classify_session_label(label: str) -> str | None:
+    """Anchored classification of a field that should BE a session name."""
+    if not label:
+        return None
     if category := _EXACT_SESSION_LABELS.get(label.lower()):
         return category
     if m := _FREE_PRACTICE_RE.match(label):
@@ -245,11 +272,7 @@ def _session_category_from_stream_name(stream_name: str) -> str | None:
         return "hyperpole"
     if _PROLOGUE_RE.search(label):
         return "prologue"
-    # Fallback: the label isn't ENTIRELY a session type, but ENDS in one —
-    # e.g. NASCAR/TSN+'s "NASCAR Cup Series Qualifying" or "2026 NASCAR ORAP
-    # Series Qualifying", vs. tsdb/STAN's convention of the label being just
-    # "Qualifying" on its own (handled above).
-    return _session_category_from_trailing_keyword(label)
+    return None
 
 
 def _session_in_category(session_code: str, category: str) -> bool:

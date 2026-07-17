@@ -921,3 +921,51 @@ def test_nearest_session_no_sessions():
     event = _wec_event([])
     code, dist = nearest_session(event, datetime(2026, 7, 17, 11, 45, tzinfo=UTC))
     assert code is None and dist == float("inf")
+
+
+# ---------------------------------------------------------------------------
+# Session scoping: Apple-TV-PPV "<tag> | <COUNTRY>: <SESSION> | ..." names
+# ---------------------------------------------------------------------------
+
+
+class TestColonValueSessionLabels:
+    def test_apple_tv_race_stream_scopes_to_race(self):
+        assert _session_category_from_stream_name(
+            "NEXT | BELGIUM: RACE | Sun 19 Jul 11:50 UTC (UK) | 8K EXCLUSIVE "
+            "| UK: APPLE TV F1 PPV 1"
+        ) == "race"
+
+    def test_apple_tv_sprint_stream_scopes_to_sprint(self):
+        assert _session_category_from_stream_name(
+            "NEXT | NETHERLANDS: SPRINT | Sat 22 Aug 09:15 UTC (UK) | 8K EXCLUSIVE "
+            "| UK: APPLE TV F1 PPV 3"
+        ) == "sprint"
+
+    def test_session_word_embedded_in_branding_does_not_count(self):
+        # "RACING"/"Race" inside branding text is not an anchored field match.
+        assert _session_category_from_stream_name(
+            "UK ★ SKY SPORTS F1 RACING HD"
+        ) is None
+        assert _session_category_from_stream_name(
+            "US: Racecourse Network | Live: Horse Coverage"
+        ) is None
+
+    def test_timestamp_colons_do_not_confuse_field_scan(self):
+        # "11:50" splits into non-session fields; a generic linear name with
+        # times must keep the full fan-out.
+        assert _session_category_from_stream_name(
+            "HBO UK 065 | Live 11:50 | Grand Prix Coverage"
+        ) is None
+
+
+def test_expand_scopes_apple_tv_race_stream_to_race_only():
+    # Live: "NEXT | BELGIUM: RACE ..." PPV streams (name-path matches) were
+    # fanned out generically and landed as full-life sources on the
+    # Qualifying channel too.
+    entry = {
+        "stream": {"id": 1, "name": "NEXT | BELGIUM: RACE | Sun 19 Jul 11:50 UTC (UK) "
+                   "| 8K EXCLUSIVE | UK: APPLE TV F1 PPV 1"},
+        "event": _wec_event(_belgian_sessions()),
+    }
+    out = expand_racing_segments([entry])
+    assert [m["segment"] for m in out] == ["race"]
