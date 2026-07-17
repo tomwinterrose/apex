@@ -32,7 +32,10 @@ from apex.consumers.matching.result import (
     MatchMethod,
     MatchOutcome,
 )
-from apex.consumers.racing_segments import get_session_times
+from apex.consumers.racing_segments import (
+    RACING_ANCHOR_TOLERANCE_SECONDS,
+    get_session_times,
+)
 from apex.consumers.stream_match_cache import StreamMatchCache, event_to_cache_data
 from apex.core.types import Event
 from apex.services.sports_data import SportsDataService
@@ -62,7 +65,8 @@ SINGLE_EVENT_SANITY_THRESHOLD = 50
 # real listings) can bind to "the one race covering this date" regardless of
 # what hour it actually airs — a program landing hours away from every real
 # session is not a broadcast of that event.
-RACING_ANCHOR_TOLERANCE_SECONDS = 90 * 60
+# (Value lives in racing_segments, shared with EPG session scoping; re-exported
+# here for the anchor-gate usage below and existing importers.)
 
 
 @dataclass

@@ -26,6 +26,7 @@ from apex.consumers.racing_segments import (
     _session_duration_hours,
     _session_in_category,
     expand_racing_segments,
+    nearest_session,
 )
 from apex.services.detection_keywords import DetectionKeywordService
 
@@ -815,3 +816,108 @@ def test_racing_generic_name_stays_unscoped(monkeypatch):
     out = m._match_racing_event(rc, 1, date(2026, 6, 1))
     assert racing_called == ["f1"]
     assert out.is_matched
+
+
+# ---------------------------------------------------------------------------
+# expand_racing_segments: EPG-matched entries scope by their programme slot
+#
+# Live gap (Belgian GP FP1, 2026-07-17): an EPG-matched linear channel ("Sky
+# Sports F1 HD") names no session in its STREAM name, so it took the generic
+# fan-out — which excludes practice — and FP1 aired with no channel. The
+# guide programme IS positive evidence of coverage ("…: 1st Practice" at the
+# session's slot), so EPG entries scope to the session(s) their programme
+# window covers, practice included.
+# ---------------------------------------------------------------------------
+
+
+def _belgian_sessions():
+    return [
+        SimpleNamespace(code="fp1", name="Practice 1",
+                        start_time=datetime(2026, 7, 17, 11, 30, tzinfo=UTC)),
+        SimpleNamespace(code="fp2", name="Practice 2",
+                        start_time=datetime(2026, 7, 17, 15, 0, tzinfo=UTC)),
+        SimpleNamespace(code="qualifying", name="Qualifying",
+                        start_time=datetime(2026, 7, 18, 14, 0, tzinfo=UTC)),
+        SimpleNamespace(code="race", name="Race",
+                        start_time=datetime(2026, 7, 19, 13, 0, tzinfo=UTC)),
+    ]
+
+
+def _epg_entry(prog_start, prog_end):
+    return {
+        "stream": {"id": 1, "name": "Sky Sports F1 HD"},
+        "event": _wec_event(_belgian_sessions()),
+        "match_method": "epg",
+        "epg_program_start": prog_start,
+        "epg_program_end": prog_end,
+    }
+
+
+def test_epg_entry_scopes_to_practice_session_its_programme_covers():
+    # "Live: Formula 1 | Belgian Grand Prix: 1st Practice" 11:00–12:55 UTC.
+    out = expand_racing_segments([_epg_entry(
+        datetime(2026, 7, 17, 11, 0, tzinfo=UTC),
+        datetime(2026, 7, 17, 12, 55, tzinfo=UTC),
+    )])
+    assert [m["segment"] for m in out] == ["fp1"]
+
+
+def test_epg_entry_scopes_to_race_for_race_slot():
+    out = expand_racing_segments([_epg_entry(
+        datetime(2026, 7, 19, 12, 30, tzinfo=UTC),
+        datetime(2026, 7, 19, 15, 30, tzinfo=UTC),
+    )])
+    assert [m["segment"] for m in out] == ["race"]
+
+
+def test_epg_buildup_programme_binds_to_nearest_session_within_tolerance():
+    # Pre-race build-up that ENDS before lights out (no window overlap) —
+    # the anchor gate admitted it, so it binds to the nearest session.
+    out = expand_racing_segments([_epg_entry(
+        datetime(2026, 7, 19, 11, 30, tzinfo=UTC),
+        datetime(2026, 7, 19, 12, 50, tzinfo=UTC),
+    )])
+    assert [m["segment"] for m in out] == ["race"]
+
+
+def test_epg_entry_covering_no_session_is_dropped():
+    # A slot hours from every session (stale plan entry): no channel at all
+    # beats a wrong one.
+    out = expand_racing_segments([_epg_entry(
+        datetime(2026, 7, 18, 2, 0, tzinfo=UTC),
+        datetime(2026, 7, 18, 3, 0, tzinfo=UTC),
+    )])
+    assert out == []
+
+
+def test_name_path_generic_stream_still_excludes_practice():
+    # Non-EPG entry (no match_method/window): generic fan-out minus practice,
+    # unchanged.
+    entry = {
+        "stream": {"id": 1, "name": "Sky Sports F1 HD"},
+        "event": _wec_event(_belgian_sessions()),
+    }
+    out = expand_racing_segments([entry])
+    assert {m["segment"] for m in out} == {"qualifying", "race"}
+
+
+# ------------------------------------------------------------ nearest_session
+
+
+def test_nearest_session_inside_window_is_zero_distance():
+    event = _wec_event(_belgian_sessions())
+    code, dist = nearest_session(event, datetime(2026, 7, 17, 11, 45, tzinfo=UTC))
+    assert code == "fp1" and dist == 0.0
+
+
+def test_nearest_session_picks_closest_edge():
+    event = _wec_event(_belgian_sessions())
+    # 14:40 UTC Friday: FP1 ended 12:30 (7800s away), FP2 starts 15:00 (1200s).
+    code, dist = nearest_session(event, datetime(2026, 7, 17, 14, 40, tzinfo=UTC))
+    assert code == "fp2" and dist == 1200.0
+
+
+def test_nearest_session_no_sessions():
+    event = _wec_event([])
+    code, dist = nearest_session(event, datetime(2026, 7, 17, 11, 45, tzinfo=UTC))
+    assert code is None and dist == float("inf")

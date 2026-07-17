@@ -50,6 +50,7 @@ from apex.consumers.matching.result import (
 )
 from apex.consumers.matching.team_matcher import TeamMatcher
 from apex.consumers.matching.tennis_matcher import TennisMatcher
+from apex.consumers.racing_segments import nearest_session
 from apex.consumers.stream_match_cache import (
     StreamMatchCache,
     get_generation_counter,
@@ -703,8 +704,9 @@ class StreamMatcher:
         # event (e.g. a pre-game block + the game itself both pass the anchor
         # gate), we keep only the one whose start is nearest the event — the live
         # broadcast — giving a deterministic, correctly-anchored window (bead
-        # t5e). Different events on the same channel keep distinct keys.
-        best_by_event: dict[str | None, tuple[float, MatchedStreamResult]] = {}
+        # t5e). Different events on the same channel keep distinct keys. Racing
+        # events key by (event id, session) instead — see the bucketing below.
+        best_by_event: dict[object, tuple[float, MatchedStreamResult]] = {}
         league_event_type = self._get_dominant_event_type()
 
         # Full sorted timeline for this tvg_id. A linear channel legitimately
@@ -853,9 +855,25 @@ class StreamMatcher:
                     round(skew_s / 60),
                 )
                 # Keep the nearest-to-event program per event (live over pre-game).
-                prev = best_by_event.get(ev_id)
+                # Racing weekends are the exception: the guide carries one
+                # programme per SESSION (FP1, Qualifying, Race, ...) and every
+                # one of them matches the same event — keyed by event id alone
+                # they'd collapse to a single entry/window and the weekend's
+                # other session channels would never see this stream. Bucket
+                # racing programmes by (event, nearest session) instead, with
+                # skew measured against that session so "live over pre-game"
+                # still holds within each bucket.
+                key: object = ev_id
+                if getattr(ev, "sessions", None) and program.start_dt is not None:
+                    s_code, s_dist = nearest_session(
+                        ev, program.start_dt, self._sport_durations
+                    )
+                    if s_code is not None:
+                        key = (ev_id, s_code)
+                        skew_s = s_dist
+                prev = best_by_event.get(key)
                 if prev is None or skew_s < prev[0]:
-                    best_by_event[ev_id] = (
+                    best_by_event[key] = (
                         skew_s,
                         self._outcome_to_result(
                             outcome=outcome,

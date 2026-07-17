@@ -32,6 +32,14 @@ from apex.providers.tsdb.racing import (
 
 logger = logging.getLogger(__name__)
 
+# How far a broadcast instant may sit from a session's real [start, end]
+# window and still count as covering that session. 90 minutes accommodates
+# pre-session build-up coverage (a broadcast starting well before lights
+# out) without letting a program merely NAMING a racing series bind to a
+# session airing hours away. Shared by the racing matcher's EPG anchor gate
+# and the session-scoping logic below.
+RACING_ANCHOR_TOLERANCE_SECONDS = 90 * 60
+
 # Canonical session order, earliest to latest within a race weekend.
 SESSION_ORDER = [
     "fp1",
@@ -311,6 +319,37 @@ def get_session_times(
     return event.start_time, event.start_time + timedelta(hours=duration)
 
 
+def nearest_session(
+    event: Event,
+    instant: datetime,
+    sport_durations: dict[str, float] | None = None,
+) -> tuple[str | None, float]:
+    """The session of ``event`` airing nearest ``instant``.
+
+    Distance is 0 inside a session's real [start, end] window, else the gap
+    to the nearest window edge, in seconds. Used to bucket EPG programmes by
+    the session they broadcast (a race weekend's guide carries one programme
+    per session, all matching the same event).
+
+    Returns:
+        (session_code, distance_seconds); (None, inf) when the event carries
+        no session data.
+    """
+    best_code: str | None = None
+    best_dist = float("inf")
+    for session in event.sessions or []:
+        start, end = get_session_times(event, session.code, sport_durations)
+        if start <= instant <= end:
+            dist = 0.0
+        elif instant < start:
+            dist = (start - instant).total_seconds()
+        else:
+            dist = (instant - end).total_seconds()
+        if dist < best_dist:
+            best_code, best_dist = session.code, dist
+    return best_code, best_dist
+
+
 def expand_racing_segments(
     matched_streams: list[dict],
     sport_durations: dict[str, float] | None = None,
@@ -371,6 +410,37 @@ def expand_racing_segments(
                 )
                 continue
             sessions = scoped
+        elif match.get("match_method") == "epg" and match.get("epg_program_start") is not None:
+            # EPG-matched linear channel: the guide names the exact slot this
+            # stream airs, so scope to the session(s) that slot covers —
+            # PRACTICE INCLUDED. The generic practice exclusion below exists
+            # because a name-path stream's coverage is unknown; here the
+            # listing is positive evidence the channel airs this session.
+            prog_start = match["epg_program_start"]
+            prog_end = match.get("epg_program_end") or prog_start
+            overlapping = []
+            for s in sessions:
+                start, end = get_session_times(event, s.code, sport_durations)
+                if start <= prog_end and prog_start <= end:
+                    overlapping.append(s)
+            if not overlapping:
+                # Build-up coverage that ends before lights out (no overlap):
+                # the matcher's anchor gate already proved a session airs
+                # within tolerance of this slot — bind to the nearest one.
+                code, dist = nearest_session(event, prog_start, sport_durations)
+                if code is not None and dist <= RACING_ANCHOR_TOLERANCE_SECONDS:
+                    overlapping = [s for s in sessions if s.code == code]
+            if not overlapping:
+                logger.debug(
+                    "[RACING_SEGMENTS] Dropping '%s': EPG slot [%s..%s] covers "
+                    "no session of event '%s'",
+                    stream_name[:60],
+                    prog_start,
+                    prog_end,
+                    event.name,
+                )
+                continue
+            sessions = overlapping
         else:
             # Providers frequently don't carry a dedicated practice feed at
             # all (coverage often starts at qualifying), so a generic
