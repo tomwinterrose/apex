@@ -7,6 +7,7 @@ regression-prone path (cf. #157): a team-sport stream that leaks into a
 racing-dominant group must NOT be hijacked as a race.
 """
 
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
@@ -274,6 +275,118 @@ def test_covers_instant_checks_every_session_in_the_weekend():
     assert matcher._covers_instant(event, fp1, None)
     assert matcher._covers_instant(event, race, None)
     assert not matcher._covers_instant(event, fp1 + timedelta(hours=6), None)
+
+
+# ---------------------------------------------------------------------------
+# RacingMatcher EPG-path match date: a programme's own broadcast date, not the
+# run's target_date, decides which race weekend it can bind to.
+#
+# EPG programme titles rarely carry an explicit date, so extracted_date is
+# None and the matcher used to fall back to the run's target_date. Guides
+# publish a race weekend days ahead: on Thursday's runs, Friday's "1st
+# Practice" programme was matched against Thursday — no event covers that
+# date — and stayed unmatched until the run date reached the weekend. With
+# anchor_dt available (EPG path always has it), the programme's own date is
+# the right fallback; the anchor gate still enforces session proximity.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _FakeRacingEvent:
+    """dataclass (not SimpleNamespace) so _cache_result's asdict() works."""
+
+    id: str
+    name: str
+    short_name: str
+    circuit_name: str
+    league: str
+    sport: str
+    start_time: datetime
+    sessions: list
+    venue: object = None
+
+
+class _FakeMatchCache:
+    def __init__(self):
+        self.set_calls = []
+
+    def get(self, *args, **kwargs):
+        return None
+
+    def touch(self, *args, **kwargs):
+        pass
+
+    def delete(self, *args, **kwargs):
+        pass
+
+    def set(self, **kwargs):
+        self.set_calls.append(kwargs)
+
+
+class _FakeSportsService:
+    def __init__(self, events):
+        self._events = events
+        self.requested_dates = []
+
+    def get_provider_name(self, league):
+        return "espn"
+
+    def get_events(self, league, target_date, cache_only=False):
+        self.requested_dates.append(target_date)
+        return self._events
+
+
+def _belgian_gp():
+    fp1 = datetime(2026, 7, 17, 11, 30, tzinfo=UTC)
+    race = datetime(2026, 7, 19, 13, 0, tzinfo=UTC)
+    return _FakeRacingEvent(
+        id="espn_f1_belgium_2026",
+        name="Belgian Grand Prix",
+        short_name="Belgian Grand Prix",
+        circuit_name="Circuit de Spa-Francorchamps",
+        league="f1",
+        sport="racing",
+        start_time=fp1,
+        sessions=[_racing_session("fp1", fp1), _racing_session("race", race)],
+    )
+
+
+def _match_belgian_gp(anchor_dt):
+    event = _belgian_gp()
+    service = _FakeSportsService([event])
+    matcher = RacingMatcher(service=service, cache=_FakeMatchCache())
+    classified = classify_stream(
+        "Formula 1 | Belgian Grand Prix: 1st Practice", league_event_type="event"
+    )
+    assert classified.category == StreamCategory.RACING_EVENT
+    assert classified.normalized.extracted_date is None  # premise: no date in text
+    outcome = matcher.match(
+        classified=classified,
+        league="f1",
+        target_date=date(2026, 7, 16),  # Thursday's run, weekend starts Friday
+        group_id=1,
+        stream_id=1,
+        generation=1,
+        user_tz=ZoneInfo("America/Chicago"),
+        anchor_dt=anchor_dt,
+    )
+    return outcome, service
+
+
+def test_epg_programme_matches_by_its_own_broadcast_date():
+    # Friday 11:00 UTC guide slot, 30 min before FP1 — inside anchor tolerance.
+    outcome, service = _match_belgian_gp(anchor_dt=datetime(2026, 7, 17, 11, 0, tzinfo=UTC))
+    assert outcome.is_matched and outcome.event.id == "espn_f1_belgium_2026"
+    # Events were fetched for the programme's date, not the run's.
+    assert service.requested_dates == [date(2026, 7, 17)]
+
+
+def test_name_path_still_uses_run_target_date():
+    # Without an anchor (plain stream-name path) the old fallback holds: the
+    # Thursday run date isn't covered by the weekend, so no match yet.
+    outcome, service = _match_belgian_gp(anchor_dt=None)
+    assert not outcome.is_matched
+    assert service.requested_dates == [date(2026, 7, 16)]
 
 
 # ---------------------------------------------------------------------------

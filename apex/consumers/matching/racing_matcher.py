@@ -140,7 +140,14 @@ class RacingMatcher:
         # Race-weekend streams carry the session's own date (e.g. "Sun 14 Jun"
         # for the race), which may differ from today's batch target_date.
         # Use that date to find the covering event/session when present.
-        match_date = classified.normalized.extracted_date or target_date
+        # EPG programmes rarely carry a date in their text, but always carry
+        # their broadcast instant — fall back to the programme's own date so
+        # a Friday session can bind as soon as the guide publishes it, rather
+        # than waiting for the run date to reach the race weekend. The
+        # anchor_dt gate below still enforces real session proximity.
+        match_date = classified.normalized.extracted_date
+        if match_date is None:
+            match_date = anchor_dt.astimezone(user_tz).date() if anchor_dt else target_date
 
         ctx = RacingMatchContext(
             stream_name=classified.normalized.original,
