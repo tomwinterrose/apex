@@ -356,8 +356,21 @@ def expand_racing_segments(
         stream_name = match.get("stream", {}).get("name") or ""
         if category := _session_category_from_stream_name(stream_name):
             scoped = [s for s in sessions if _session_in_category(s.code, category)]
-            if scoped:
-                sessions = scoped
+            # No session of the named category: providers list sessions the
+            # data source doesn't (ESPN's IndyCar events often carry only
+            # the race). A dedicated "Practice 1"/"Qualifying" feed must not
+            # fall back to the full fan-out and land on the Race channel —
+            # better no channel than the wrong one.
+            if not scoped:
+                logger.debug(
+                    "[RACING_SEGMENTS] Dropping '%s': names session category "
+                    "'%s' but event '%s' has no such session",
+                    stream_name[:60],
+                    category,
+                    event.name,
+                )
+                continue
+            sessions = scoped
         else:
             # Providers frequently don't carry a dedicated practice feed at
             # all (coverage often starts at qualifying), so a generic

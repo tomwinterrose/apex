@@ -643,14 +643,36 @@ def test_expand_racing_segments_scopes_unnumbered_trailing_practice_stream():
     assert [m["segment"] for m in out] == ["practice"]
 
 
-def test_expand_racing_segments_falls_back_when_no_session_of_the_category_exists():
-    # Defensive: a hint that doesn't match anything in THIS event's sessions
-    # must not silently produce zero segments for a real matched stream.
+def test_expand_racing_segments_drops_stream_when_no_session_of_the_category_exists():
+    # Live false positive (Grand Prix of Nashville, 2026-07-17): ESPN's
+    # IndyCar events carry only the race session, so dedicated "Practice 1:"
+    # and "Qualifying:" streams found no session of their category and the
+    # old fallback fanned them out to everything — all three landed as
+    # sources on the Race channel. A stream that names a session category
+    # the event doesn't have must be dropped, not rebound to other sessions.
     sessions = [s for s in _wec_sessions() if s.code != "fp3"]
     matched = [{"stream": {"id": 1, "name": "AU (STAN) | Free Practice 3: 6 Hours of Sao Paulo"},
                 "event": _wec_event(sessions)}]
     out = expand_racing_segments(matched)
-    assert len(out) == len(sessions)
+    assert out == []
+
+
+def test_expand_racing_segments_drops_session_named_streams_for_race_only_event():
+    # The exact Nashville shape: event has only a race session; the
+    # practice/qualifying feeds disappear, the race feed stays.
+    race = SimpleNamespace(code="race", name="Race",
+                           start_time=datetime(2026, 7, 19, 21, 30, tzinfo=UTC))
+    def entry(name):
+        return {"stream": {"id": 1, "name": name}, "event": _wec_event([race])}
+    out = expand_racing_segments([
+        entry("AU (STAN 31) | Practice 1: Grand Prix of Nashville  Indycar 2026"),
+        entry("AU (STAN 41) | Qualifying: Grand Prix of Nashville  Indycar 2026"),
+        entry("AU (STAN 44) | Final Practice: Grand Prix of Nashville  Indycar 2026"),
+        entry("AU (STAN 50) | Race: Grand Prix of Nashville  Indycar 2026"),
+    ])
+    assert [(m["stream"]["name"][:12], m["segment"]) for m in out] == [
+        ("AU (STAN 50)", "race"),
+    ]
 
 
 class TestIsPracticeSession:
